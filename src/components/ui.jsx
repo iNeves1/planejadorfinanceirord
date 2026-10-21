@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId, cloneElement, isValidElement, Children } from "react";
 import { ArrowRight, ArrowLeft, Check, ChevronDown, Trash2 } from "lucide-react";
 import { TOKENS } from "../tokens.js";
 import { fmtBRL, fmtUSD, onlyDigits } from "../utils/format.js";
@@ -362,4 +362,27 @@ export function QuestionShell({ eyebrow, title, subtitle, children, onBack, onNe
       </div>
     </div>
   );
+}
+
+// Primitivas do painel de fundos. Estilos isolados em .funds-app.
+export function FundButton({ children, icon: Icon, variant = 'primary', className = '', ...props }) {
+  return <button className={`fd-button ${variant} ${className}`} {...props}>{Icon && <Icon size={16} aria-hidden="true" />}{children}</button>;
+}
+export function FundField({ label, children, className = '' }) {
+  const labelId = useId();
+  function nameControl(node) {
+    if (!isValidElement(node)) return node;
+    if (['input', 'select', 'textarea'].includes(node.type)) return cloneElement(node, { 'aria-labelledby': labelId });
+    return node.props.children ? cloneElement(node, {}, Children.map(node.props.children, nameControl)) : node;
+  }
+  return <label className={`fd-field ${className}`}><span id={labelId}>{label}</span>{Children.map(children, nameControl)}</label>;
+}
+export function FundPanel({ title, eyebrow, action, children, className = '', id }) {
+  return <section id={id} className={`fd-panel ${className}`}><div className="fd-panel-heading"><div>{eyebrow && <span className="fd-eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>{action}</div>{children}</section>;
+}
+export function FundBadge({ children, tone = 'neutral' }) {
+  return <span className={`fd-badge ${tone}`}>{children}</span>;
+}
+export function FundEmpty({ title, children }) {
+  return <div className="fd-empty"><span aria-hidden="true">↗</span><h3>{title}</h3><p>{children}</p></div>;
 }

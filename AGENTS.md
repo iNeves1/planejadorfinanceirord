@@ -1,3 +1,15 @@
+# Painel de fundos — contexto atualizado
+
+O usuário autorizou a implementação do novo painel. `src/App.jsx` agora contém o painel de fundos na rota `/`; o formulário descrito abaixo permanece intacto em `src/FinancialOnboarding.jsx`, acessível em `/planejamento`. Os estilos do painel são isolados sob `.funds-app` em `src/funds/funds.css`. As novas primitivas de campos, botões e painéis estão em `src/components/ui.jsx`; reutilize-as. As regras e importação estão em `src/funds/model.js`, os dados sintéticos em `src/funds/demo.js`.
+
+Consulte `docs/painel-fundos.md` para capacidades, contratos e limitações. Não use o HTML de previdência como base de posições de fundos. Não invente sugestões reais ou métricas ausentes. A análise solicitada no Mais Retorno permanece privada, fora da interface e do bundle. Cartões de sugestão mostram somente identificação, retornos e referência. Dados e atendimentos do protótipo ficam em memória; não introduza persistência pública de dados pessoais. Filtros não são autorização. O painel não usa Web3Forms.
+
+Validação: `npm run build`, `node --test tests/funds.test.js` e smoke interativo documentado. O formulário original e suas regras seguem abaixo.
+
+Arquivo único de trabalho: `src/funds/workspace.js` importa/exporta posições, revisões externas por conta/fundo, alternativas, decisões e limite de concentração com validação estrita. O HTML independente pode ler esse pacote em `#rd-private-workspace`. `npm run build:offline` gera `dist/rd-fundos.html` somente demonstrativo; `scripts/build-offline.mjs --workspace ... --output ...` exige que HTML com dados reais fique fora do checkout. Nunca inserir contas em `src`, `public`, `dist` ou fixtures. O HTML privado usa CSP sem conexões e sem dependências externas. Validação adicional: `npm test` e `tests/offline-smoke.mjs` (Chromium gerenciado bloqueia file:, portanto o teste serve o HTML único por loopback e desliga a rede durante as interações).
+
+---
+
 # AGENTS.md
 
 ## What this is
