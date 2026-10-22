@@ -11,6 +11,10 @@ A rota `/` apresenta acesso privado. Uma sessão válida carrega automaticamente
 - Pontos de atenção: revisões explicáveis, exposição sem duplicação, contas prioritárias e tarefas.
 - Acompanhamento: decisões, histórico e próximas revisões; no acesso online com armazenamento privado, salvamento automático e botão explícito de salvar.
 
+Mais abaixo em Resumo e Pontos de atenção, a seção **Clientes em fundos com baixo desempenho** relaciona fundos com revisão pesquisada do tipo Desempenho e todas as contas posicionadas neles. Mostra retorno de 12M, referência própria, defasagem comparável, códigos, assessores, saldos por fundo e peso sobre todos os fundos importados da conta. Alertas de concentração/cadastro não alimentam essa lista. Cada posição é contada uma vez, mesmo com revisões repetidas; a exposição ao fundo não cria um alerta individual para outras contas. As posições não permitem afirmar que houve novas compras.
+
+O atalho **Baixo desempenho** desce até essa seção do Resumo. Clicar no fundo abre a consulta e sobe até a área de trabalho; na tabela de fundos mostra todas as contas posicionadas, e na linha de um cliente preserva aquela conta. O destino recebe foco e respeita a preferência por movimento reduzido.
+
 O cabeçalho escuro, verde, navegação horizontal, tabelas e cartões seguem a organização do HTML de referência. `reference.css` isola essa apresentação do formulário legado. As tabelas têm rolagem horizontal própria no celular.
 
 ## Servidor e configuração

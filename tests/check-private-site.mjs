@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { importWorkspace } from "../src/funds/workspace.js";
-import { compact, sum, percent } from "../src/funds/model.js";
+import { compact, sum, percent, buildAlerts, underperformanceExposure } from "../src/funds/model.js";
 import { weightedPerformance } from "../src/funds/performance.js";
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 if (!process.argv[2]) throw new Error("Informe o caminho externo do HTML privado a validar.");
@@ -24,6 +24,18 @@ try {
   await page.getByText("Carteira privada · arquivo de trabalho", { exact: true }).waitFor();
   assert.equal(await page.locator(".fd-stat").nth(0).locator("strong").innerText(), compact(sum(data.positions)));
   assert.equal(await page.locator(".fd-stat").nth(1).locator("strong").innerText(), String(new Set(data.positions.map((p) => p.account)).size));
+  const low = underperformanceExposure(data, data.positions, buildAlerts(data, data.positions));
+  const lowPanel = page.locator("#baixo-desempenho");
+  assert.equal(await lowPanel.getByRole("table", { name: "Fundos sinalizados por baixo desempenho", exact: true }).locator("tbody tr").count(), low.funds.length);
+  assert.equal(await lowPanel.getByRole("table", { name: "Clientes posicionados em fundos com baixo desempenho", exact: true }).locator("tbody tr").count(), low.clients.length);
+  if (low.funds.length) {
+    const button = lowPanel.getByRole("table", { name: "Fundos sinalizados por baixo desempenho", exact: true }).getByRole("button").first();
+    const name = await button.innerText();
+    await button.click();
+    const selected = await page.getByLabel("Fundo", { exact: true }).inputValue();
+    assert.ok(data.funds.find((fund) => fund.id === selected)?.name === name, "abre o fundo escolhido na lista real");
+    assert.equal(await page.getByRole("table").first().locator("tbody tr").count(), low.funds.find((item) => item.fund.id === selected).clients.length);
+  }
   await page.getByRole("navigation").getByRole("button", { name: "Pontos de atenção", exact: true }).click();
   await page.getByRole("button", { name: "Desempenho", exact: true }).click();
   while (await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).count()) await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).click();

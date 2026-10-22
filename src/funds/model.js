@@ -110,6 +110,20 @@ export function priorityClients(data, positions, alerts) {
       fundIds: [...new Set(affected.map((position) => position.fundId))] };
   }).filter((client) => client.exposure > 0).sort((a, b) => b.exposure - a.exposure || a.key.localeCompare(b.key));
 }
+// Exposição ao fundo sinalizado, sem atribuir a todas as contas o alerta individual.
+export function underperformanceExposure(data, positions, alerts) {
+  const fundIds = new Set(alerts.filter((alert) => alert.type === "Desempenho").map((alert) => alert.fundId));
+  const affected = positions.filter((position) => fundIds.has(position.fundId));
+  const clients = groupClients(affected).map((client) => {
+    const accountBalance = sum(data.positions.filter((p) => `${p.advisor}:${p.clientId}` === client.key));
+    return { ...client, accountBalance, weight: accountBalance > 0 ? client.balance / accountBalance : null };
+  });
+  const funds = data.funds.filter((fund) => affected.some((p) => p.fundId === fund.id)).map((fund) => {
+    const fundPositions = affected.filter((p) => p.fundId === fund.id);
+    return { fund, balance: sum(fundPositions), clients: groupClients(fundPositions) };
+  });
+  return { positions: affected, clients, funds };
+}
 export function allocation(positions, funds, field = "strategy") {
   const total = sum(positions),
     groups = new Map();

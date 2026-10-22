@@ -51,6 +51,7 @@ import "./funds/funds.css";
 import "./funds/reference.css";
 import { importWorkspace, exportWorkspace } from "./funds/workspace.js";
 import Performance from "./funds/Performance.jsx";
+import Underperformance from "./funds/Underperformance.jsx";
 import PrivateAccess from "./funds/PrivateAccess.jsx";
 import { usePrivateSave } from "./funds/usePrivateSave.js";
 import { benchmarkComparison, fundReference, relocationAlternatives } from "./funds/performance.js";
@@ -251,9 +252,19 @@ export function FundsDashboard({ initial, onLogout }) {
   const [alertCount, setAlertCount] = useState(6);
   const [fundSort, setFundSort] = useState("balance");
   const [comparisonPeriod, setComparisonPeriod] = useState(2);
+  const [scrollTarget, setScrollTarget] = useState(null);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const remoteSave = usePrivateSave(data, tasks, limit, initial.remote);
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(scrollTarget.id);
+      target?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      target?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scrollTarget]);
   useEffect(() => setAlertCount(6), [advisor, strategy, query, priority, data]);
   useEffect(() => {
     document.title = "RD Investimentos · Carteira de fundos";
@@ -321,6 +332,11 @@ export function FundsDashboard({ initial, onLogout }) {
     setPage(next);
     setQuery("");
     if (!["funds", "compare"].includes(next)) setClientKey(null);
+    setScrollTarget({ id: "conteudo" });
+  }
+  function openUnderperformance() {
+    go("day");
+    setScrollTarget({ id: "baixo-desempenho" });
   }
   function openFund(id, next = "funds", accountKey = null) {
     setFundId(id);
@@ -570,6 +586,7 @@ export function FundsDashboard({ initial, onLogout }) {
       <div className="fd-reference-nav">
         <nav aria-label="Navegação principal" className="fd-reference-wrap">
           {navigation.map(([id, label]) => <button key={id} aria-current={page === id ? "page" : undefined} className={page === id ? "active" : ""} onClick={() => go(id)}>{label}</button>)}
+          <button onClick={openUnderperformance}>Baixo desempenho</button>
           <button onClick={() => setModal("method")}>Metodologia</button>
           <Button variant="secondary" icon={Printer} onClick={() => window.print()}>Imprimir</Button>
           {onLogout && <Button variant="secondary" onClick={async () => {
@@ -579,7 +596,7 @@ export function FundsDashboard({ initial, onLogout }) {
         </nav>
       </div>
       <div className="fd-main">
-        <main className="fd-content" id="conteudo">
+        <main className="fd-content" id="conteudo" tabIndex={-1}>
           {initial.remote?.persistent && <p className={remoteSave.state === "error" ? "fd-error" : "fd-caption"} role="status">{remoteSave.message}</p>}
           <div className="fd-base-banner">
             <span>
@@ -721,6 +738,9 @@ export function FundsDashboard({ initial, onLogout }) {
               <Panel title="Alocação por gestora"><Allocation positions={positions} funds={funds} field="manager" /></Panel>
             </div>
             <Performance data={data} positions={positions} />
+            <Underperformance data={data} positions={positions} alerts={allAlerts} query={query}
+              onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)}
+              onClient={(key) => { go("clients"); setClientKey(key); }} />
           </>}
 
           {page === "attention" && (
@@ -964,6 +984,9 @@ export function FundsDashboard({ initial, onLogout }) {
                 </table></div> : <Empty title="Sem revisões de prioridade alta nesta seleção">Alertas de prioridade média e concentrações continuam disponíveis na central.</Empty>}
                 <p className="fd-panel-note">Até 25 contas, ordenadas pelo saldo exposto a alertas de prioridade alta. Cada posição é contada uma vez. O percentual usa todos os fundos importados da conta, mesmo com filtro de estratégia. Esta lista orienta a revisão, sem determinar uma venda.</p>
               </Panel>
+              <Underperformance data={data} positions={positions} alerts={allAlerts} query={query}
+                onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)}
+                onClient={(key) => { go("clients"); setClientKey(key); }} />
             </>
           )}
 
