@@ -73,8 +73,14 @@ try {
   const holderRow = lowPerformance.getByRole("table", { name: "Clientes posicionados em fundos com baixo desempenho", exact: true }).locator("tbody tr").filter({ hasText: "Conta de teste 1" });
   assert.ok((await holderRow.innerText()).includes("1.000,56"));
   await holderRow.getByRole("button", { name: "Fundo de teste", exact: true }).click();
-  assert.equal(await page.getByLabel("Conta na consulta", { exact: true }).inputValue(), "IN:A1");
+  assert.equal(await page.getByLabel("Conta na consulta", { exact: true }).inputValue(), "all");
+  assert.equal(await page.getByRole("table").first().locator("tbody tr").count(), 2);
+  assert.ok((await page.locator(".fd-client-origin").innerText()).includes("A1"));
+  await page.getByLabel("Buscar cliente", { exact: true }).fill("A2");
+  assert.equal(await page.getByLabel("Fundo", { exact: true }).inputValue(), "F1");
   assert.equal(await page.getByRole("table").first().locator("tbody tr").count(), 1);
+  assert.ok((await page.getByRole("table").first().innerText()).includes("66,66%"));
+  await page.getByLabel("Buscar cliente", { exact: true }).fill("");
   await page.getByRole("navigation").getByRole("button", { name: "Baixo desempenho", exact: true }).click();
   await page.getByLabel("Estratégia", { exact: true }).selectOption("Inflação");
   await page.getByText("Nenhum fundo sinalizado por baixo desempenho nesta seleção", { exact: true }).waitFor();
@@ -87,17 +93,28 @@ try {
   const priorityPanel = page.locator("section").filter({ has: page.getByRole("heading", { name: "Contas com maior exposição a revisões prioritárias", exact: true }) });
   assert.equal(await priorityPanel.locator("tbody tr").count(), 1);
   assert.ok((await priorityPanel.innerText()).includes("Conta de teste 1"));
+  await page.locator("#baixo-desempenho").screenshot({ path: "/tmp/rd-attention-reference.png" });
   await page.getByRole("navigation").getByRole("button", { name: "Rentabilidade", exact: true }).click();
   const performance = page.locator("section").filter({ has: page.getByRole("heading", { name: "Indicadores históricos dos fundos", exact: true }) });
   assert.ok((await performance.locator(".fd-performance-summary").innerText()).includes("75,01%"));
   assert.ok((await performance.innerText()).includes("15,00%"));
-  assert.ok((await page.getByRole("table").last().innerText()).includes("80,00%"));
+  const fundReturns = page.getByRole("table", { name: "Rentabilidade dos fundos e comparação com CDI", exact: true });
+  assert.ok((await fundReturns.innerText()).includes("80,00%"));
+  await fundReturns.screenshot({ path: "/tmp/rd-returns-reference.png" });
+  assert.equal(await fundReturns.locator("thead tr").count(), 2);
+  assert.equal(await fundReturns.locator(".fd-cdi-row").count(), 1);
+  assert.equal(await fundReturns.locator("tbody tr").first().locator("th").innerText(), "CDI ↗");
+  assert.equal(await fundReturns.locator(".fd-below-cdi").count(), 2);
+  await fundReturns.getByRole("button", { name: "Fundo de teste", exact: true }).click();
+  assert.equal(await page.getByRole("table", { name: "Clientes com o fundo selecionado", exact: true }).locator("tbody tr").count(), 2);
+  await page.getByRole("navigation").getByRole("button", { name: "Rentabilidade", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     "indicadores sem overflow no mobile");
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.getByRole("navigation").getByRole("button", { name: "Realocação", exact: true }).click();
   await page.getByRole("heading", { name: "Alternativa sintética", exact: true }).waitFor();
+  await page.locator(".fd-fund-layout").screenshot({ path: "/tmp/rd-consultation-reference.png" });
   const cards = page.locator(".fd-return-card");
   assert.ok((await cards.last().innerText()).includes("+2,00 p.p."));
   await page.getByLabel("Período da comparação", { exact: true }).selectOption("0");
@@ -105,6 +122,7 @@ try {
   assert.equal(await cards.count(), 1);
   await page.getByLabel("Período da comparação", { exact: true }).selectOption("2");
   await page.getByRole("heading", { name: "Alternativa sintética", exact: true }).waitFor();
+  await page.locator(".fd-consultation-scope summary").click();
   await page.getByLabel("Conta na consulta", { exact: true }).selectOption("IN:A3");
   assert.equal(await page.getByLabel("Fundo", { exact: true }).locator("option").count(), 1);
   assert.equal(await page.getByLabel("Fundo", { exact: true }).inputValue(), "F3");
@@ -134,8 +152,9 @@ try {
   await page.getByRole("navigation").getByRole("button", { name: "Clientes", exact: true }).click();
   await page.getByRole("button", { name: "Conta de teste 1", exact: true }).click();
   await page.getByRole("button", { name: "Fundo de teste", exact: true }).click();
-  assert.equal(await page.getByLabel("Conta na consulta", { exact: true }).inputValue(), "IN:A1", "abrir uma posição preserva a conta de origem");
-  assert.equal(await page.getByRole("table").first().locator("tbody tr").count(), 1);
+  assert.equal(await page.getByLabel("Conta na consulta", { exact: true }).inputValue(), "all", "abrir uma posição mostra todos os titulares");
+  assert.equal(await page.getByRole("table").first().locator("tbody tr").count(), 2);
+  assert.ok((await page.locator(".fd-client-origin").innerText()).includes("A1"));
   const saving = page.waitForEvent("download");
   await page.getByRole("button", { name: "Salvar trabalho", exact: true }).click();
   const backupDownload = await saving;
@@ -164,6 +183,7 @@ try {
   // Migração v2 -> v3 com histórico preservado; sem reconfigurar o bootstrap.
   const audited = auditFixture();
   audited.tasks = JSON.parse(saved.content).tasks;
+  audited.positionsCsv = audited.positionsCsv.replace(";;1;3;6;6;", ";;1;12;6;6;");
   const parsedAudit = importWorkspace(JSON.stringify(audited));
   saved = { content: exportWorkspace(parsedAudit.data, parsedAudit.tasks, parsedAudit.limit), revision: `audit-${++writes}` };
   await page.reload();
@@ -171,6 +191,14 @@ try {
   const guide = page.getByRole("table", { name: "CDI por fonte e período", exact: true });
   assert.equal(await guide.locator("tbody tr").count(), 2);
   assert.ok((await guide.innerText()).includes("15,01000%"));
+  await page.getByRole("navigation").getByRole("button", { name: "Rentabilidade", exact: true }).click();
+  const ranked = page.getByRole("table", { name: "Rentabilidade dos fundos e comparação com CDI", exact: true });
+  assert.ok((await ranked.locator("tbody tr").nth(0).innerText()).includes("Fundo sob investigação"));
+  assert.equal(await ranked.locator("tbody tr").nth(1).locator("th").innerText(), "CDI ↗");
+  assert.ok((await ranked.locator("tbody tr").nth(0).innerText()).includes("120,00%"));
+  await page.getByLabel("Ordenar fundos", { exact: true }).selectOption("balance");
+  assert.equal(await ranked.locator("tbody tr").nth(0).locator("th").innerText(), "CDI ↗");
+  await page.getByRole("navigation").getByRole("button", { name: "Resumo", exact: true }).click();
   const investigation = page.getByRole("table", { name: "Fundos sinalizados por baixo desempenho", exact: true }).locator("tbody tr").filter({ hasText: "Fundo sob investigação" });
   assert.ok((await investigation.innerText()).includes("40,00%"));
   assert.ok((await investigation.innerText()).includes("Investigar benchmark e desempenho"));
