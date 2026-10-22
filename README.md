@@ -1,3 +1,45 @@
+# RD Investimentos — Carteira de fundos
+
+Painel React/Vite para organizar prioridades, consultar exposição por conta e fundo e acompanhar conversas. A rota `/` abre o painel. O formulário de planejamento patrimonial anterior foi preservado em `/planejamento`.
+
+A aplicação inicia com **dados fictícios identificados**. Posições e retornos podem ser importados por CSV e alternativas condicionais por um pacote JSON local, com identificação, rentabilidades e fonte. A pesquisa técnica permanece fora do site. Não há autenticação, banco de dados ou persistência de atendimentos. As importações são locais e temporárias; use uma base anonimizada para validar o protótipo.
+
+Leia [funcionalidades, formato CSV, limitações e testes](docs/painel-fundos.md).
+
+Para gerar um site que abre em um único HTML, sem instalação no computador de quem vai usá-lo:
+
+```sh
+npm ci
+npm run build:offline
+```
+
+O arquivo `dist/rd-fundos.html` contém a aplicação com demonstração identificada. No site, “Importar posições” também abre um arquivo de trabalho `.rdfundos`, que reúne a carteira, revisões por conta, alternativas e atendimentos. “Salvar trabalho” exporta o histórico para continuar em outra sessão. O arquivo é privado e processado no navegador, sem upload.
+
+Para uma cópia HTML já preenchida com uma carteira, gere-a **fora do checkout**, após o build:
+
+```sh
+node scripts/build-offline.mjs --workspace /caminho/privado/carteira.rdfundos --output /caminho/privado/site.html
+```
+
+Essa cópia contém contas e decisões; deve ficar em local privado. O gerador impede salvar HTML preenchido dentro do repositório. A aplicação não se conecta à rede nessa versão independente; fontes são links abertos por ação do usuário.
+
+## Publicação na Vercel
+
+`vercel.json` configura Vite, o build `npm run build:public`, a pasta `dist`, os headers e o fallback de navegação. A versão publicada começa em demonstração; carteiras e decisões são carregadas pelo arquivo privado no navegador. O HTML preenchido e os `.rdfundos` não devem ser publicados.
+
+O build público é limpo pelo Vite e conferido por `scripts/check-public-build.mjs`, que interrompe a publicação se encontrar documentos de clientes ou HTML com carteira incorporada. `.vercelignore` exclui arquivos privados e diretórios auxiliares do upload. O painel na raiz bloqueia conexões de dados com CSP; o formulário legado mantém sua rota e sua integração próprias.
+
+Após autenticar a conta Vercel, execute `vercel --prod` na raiz deste repositório. Nenhum token é incluído no projeto. O deploy precisa ser concluído e a URL verificada antes de ser anunciado como publicado.
+
+```sh
+npm ci --cache /tmp/rd-npm-cache --no-audit --no-fund
+npm run dev
+npm run build
+node --test tests/funds.test.js
+```
+
+## Formulário legado
+
 # Planejamento Financeiro — Onboarding
 
 A multi-step (12-slide) financial planning onboarding wizard, in Brazilian

@@ -1,0 +1,10 @@
+node_modules/
+.vercel/
+dist/
+.env
+.env.*
+!.env.example
+*.local
+*.rdfundos
+playwright-report/
+test-results/
