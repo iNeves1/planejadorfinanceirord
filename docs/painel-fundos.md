@@ -28,6 +28,8 @@ Nunca registrar esses valores em logs, commits, PRs ou argumentos de comandos. A
 
 Se a loja estiver indisponível, o código informa falha de salvamento e preserva a possibilidade de backup. Não anunciar persistência em nuvem antes de conectar e verificar a loja real. Exclusão, auditoria independente, restauração operacional e permissões por usuário ainda exigem evolução.
 
+Quando uma leitura HTTP fornece ETag fraco, a revisão forte é obtida da API de metadados da loja e sua identidade precisa coincidir com a leitura. Uma revisão divergente provoca conflito; o código não remove a condição de atualização nem sobrescreve outra versão para contornar a falha.
+
 ## Contratos de importação e backup
 
 CSV deve usar UTF-8, ponto e vírgula e os cabeçalhos:
