@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import { configured, authorized, sessionCookie, passwordMatches, readJson } from "../server/access.js";
 import session from "../api/session.js";
 import workspace from "../api/workspace.js";
-import { seedWorkspace, loadWorkspace, saveWorkspace, Conflict } from "../server/workspace-store.js";
+import { seedWorkspace, loadWorkspace, saveWorkspace, Conflict, blobRevision } from "../server/workspace-store.js";
 import { serverFixture, testPassword } from "./fixtures/server.js";
 import { marketFixture } from "./fixtures/workspace.js";
 
@@ -89,4 +89,12 @@ test("armazenamento privado restaura decisões e rejeita conflito sem sobrescrev
   await assert.rejects(saveWorkspace('{"invalid":true}', again.revision, local, storage));
   assert.equal(calls, 1);
   assert.throws(() => seedWorkspace({ RD_WORKSPACE_GZIP: "invalid" }));
+});
+test("ETag fraco de leitura só usa revisão forte confirmada pela API de armazenamento", () => {
+  assert.equal(blobRevision('"revision-1"'), '"revision-1"');
+  assert.equal(blobRevision('W/"revision-1"', '"revision-1"'), '"revision-1"');
+  assert.throws(() => blobRevision('W/"revision-1"'), Conflict);
+  assert.throws(() => blobRevision('W/"revision-1"', '"revision-2"'), Conflict);
+  assert.throws(() => blobRevision('"revision-1"', '"revision-2"'), Conflict);
+  assert.throws(() => blobRevision(""), Conflict);
 });

@@ -1,9 +1,17 @@
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
-import { get, put, BlobNotFoundError, BlobPreconditionFailedError } from "@vercel/blob";
+import { get, head, put, BlobNotFoundError, BlobPreconditionFailedError } from "@vercel/blob";
 import { importWorkspace, exportWorkspace } from "../src/funds/workspace.js";
 
 export class Conflict extends Error {}
+// GET pode fornecer ETag fraco após transformação HTTP. A escrita precisa da
+// revisão forte da API, cuja identidade deve coincidir com o conteúdo lido.
+export function blobRevision(readTag, writeTag = readTag) {
+  if (typeof readTag !== "string" || !readTag || typeof writeTag !== "string" || !writeTag ||
+      writeTag.startsWith("W/") || (readTag.startsWith("W/") ? readTag.slice(2) : readTag) !== writeTag)
+    throw new Conflict();
+  return writeTag;
+}
 export function canonicalWorkspace(content) {
   const { data, tasks, limit } = importWorkspace(content, "XPerformance · carteira privada");
   return exportWorkspace(data, tasks, limit);
@@ -20,7 +28,11 @@ const blobStorage = {
       const result = await get(path, { access: "private", useCache: false });
       if (!result) return null;
       if (result.statusCode !== 200 || result.blob.size > 10 * 1024 * 1024) throw new Error("Arquivo privado inválido.");
-      return { content: await new Response(result.stream).text(), revision: result.blob.etag };
+      const content = await new Response(result.stream).text();
+      const tag = result.blob.etag;
+      const metadata = tag.startsWith("W/") ? await head(path) : null;
+      const revision = blobRevision(tag, metadata?.etag || tag);
+      return { content, revision };
     } catch (error) { if (error instanceof BlobNotFoundError) return null; throw error; }
   },
   async write(path, content, revision) {
