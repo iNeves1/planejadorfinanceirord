@@ -304,9 +304,8 @@ export function FundsDashboard({ initial, onLogout }) {
       : sum(positions.filter((position) => position.fundId === fund.id));
     return value(b) - value(a) || a.name.localeCompare(b.name, "pt-BR");
   });
-  const activeClient = groupClients(
-    data.positions.filter((p) => advisor === "all" || p.advisor === advisor),
-  ).find((c) => c.key === clientKey);
+  const advisorClients = groupClients(data.positions.filter((p) => advisor === "all" || p.advisor === advisor));
+  const activeClient = advisorClients.find((c) => c.key === clientKey);
   const consultationFunds = visibleFunds.filter((fund) => !activeClient || activeClient.positions.some((p) => p.fundId === fund.id));
   const selectedFund = consultationFunds.find((fund) => fund.id === fundId) || consultationFunds[0];
   const activeClientAlerts = activeClient ? buildAlerts(data, activeClient.positions, limit) : [];
@@ -331,7 +330,7 @@ export function FundsDashboard({ initial, onLogout }) {
   }
   function makeTask(seed = {}) {
     setTaskSeed(seed);
-    const eligibleClients = clients.filter((client) => !seed.fundId || client.positions.some((p) => p.fundId === seed.fundId));
+    const eligibleClients = advisorClients.filter((client) => !seed.fundId || client.positions.some((p) => p.fundId === seed.fundId));
     const client = eligibleClients.find((c) => c.key === seed.clientKey) || eligibleClients[0];
     setTaskAccountKey(client?.key || "");
     setTaskFundId(client?.positions.some((p) => p.fundId === seed.fundId) ? seed.fundId : client?.positions[0]?.fundId || "");
@@ -410,7 +409,7 @@ export function FundsDashboard({ initial, onLogout }) {
   function taskForm(e) {
     e.preventDefault();
     const values = new FormData(e.currentTarget);
-    const client = clients.find((c) => c.key === values.get("client"));
+    const client = advisorClients.find((c) => c.key === values.get("client"));
     const fund = funds.find((f) => f.id === values.get("fund"));
     if (
       !client ||
@@ -1244,7 +1243,7 @@ export function FundsDashboard({ initial, onLogout }) {
                     setQuery("");
                   }}>
                     <option value="all">Todas as contas · visão do assessor</option>
-                    {groupClients(data.positions.filter((p) => advisor === "all" || p.advisor === advisor)).map((client) => <option key={client.key} value={client.key}>{client.name} · {client.id} · {client.advisor}</option>)}
+                    {advisorClients.map((client) => <option key={client.key} value={client.key}>{client.name} · {client.id} · {client.advisor}</option>)}
                   </select>
                 </Field>
                 <Field label="Fundo" className="fd-fund-select">
@@ -1639,7 +1638,7 @@ export function FundsDashboard({ initial, onLogout }) {
             Vincule uma conta e um fundo, registre o motivo e defina o próximo
             contato.
           </p>
-          {clients.length ? (
+          {advisorClients.length ? (
             <form onSubmit={taskForm}>
               <div className="fd-form-grid">
                 <Field label="Cliente / conta">
@@ -1649,10 +1648,10 @@ export function FundsDashboard({ initial, onLogout }) {
                     value={taskAccountKey}
                     onChange={(e) => {
                       setTaskAccountKey(e.target.value);
-                      setTaskFundId(taskSeed?.fundId || clients.find((c) => c.key === e.target.value)?.positions[0]?.fundId || "");
+                      setTaskFundId(taskSeed?.fundId || advisorClients.find((c) => c.key === e.target.value)?.positions[0]?.fundId || "");
                     }}
                   >
-                    {clients.filter((c) => !taskSeed?.fundId || c.positions.some((p) => p.fundId === taskSeed.fundId)).map((c) => (
+                    {advisorClients.filter((c) => !taskSeed?.fundId || c.positions.some((p) => p.fundId === taskSeed.fundId)).map((c) => (
                       <option key={c.key} value={c.key}>
                         {c.name} · {c.id}
                       </option>
@@ -1666,7 +1665,7 @@ export function FundsDashboard({ initial, onLogout }) {
                     value={taskFundId}
                     onChange={(e) => setTaskFundId(e.target.value)}
                   >
-                    {funds.filter((fund) => (!taskSeed?.fundId || taskSeed.fundId === fund.id) && clients.find((c) => c.key === taskAccountKey)?.positions.some((p) => p.fundId === fund.id)).map((f) => (
+                    {funds.filter((fund) => (!taskSeed?.fundId || taskSeed.fundId === fund.id) && advisorClients.find((c) => c.key === taskAccountKey)?.positions.some((p) => p.fundId === fund.id)).map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name}
                       </option>

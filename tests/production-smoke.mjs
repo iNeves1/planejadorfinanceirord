@@ -115,6 +115,13 @@ try {
   const restored = importWorkspace(await readFile(await saved.path(), "utf8"));
   assert.deepEqual(restored.data.market, marketFixture().market);
   await page.getByRole("navigation").getByRole("button", { name: "Acompanhamento", exact: true }).click();
+  await page.getByLabel("Estratégia", { exact: true }).selectOption("Multimercado");
+  await page.getByRole("button", { name: "Novo acompanhamento", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Cliente / conta", { exact: true }).selectOption("IN:A3");
+  assert.equal(await page.getByRole("dialog").getByLabel("Fundo", { exact: true }).inputValue(), "F3", "formulário usa posições completas da conta, mesmo com filtro de estratégia");
+  assert.equal(await page.getByRole("dialog").getByLabel("Fundo", { exact: true }).locator("option").count(), 1);
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.getByLabel("Estratégia", { exact: true }).selectOption("all");
   await page.getByRole("button", { name: "Registrar decisão", exact: true }).click();
   await page.getByLabel("O que foi conversado ou decidido?").fill("Decisão de teste preservada pelo servidor privado.");
   const persistenceResponse = page.waitForResponse((response) => response.url().endsWith("/api/workspace") && response.request().method() === "PUT");
