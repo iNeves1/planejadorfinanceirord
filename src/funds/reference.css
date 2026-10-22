@@ -1,0 +1,185 @@
+/* Estrutura e paleta do HTML de referência, isoladas do formulário legado. */
+.funds-app.fd-reference {
+  --fd-bg: #e9edeb;
+  --fd-dark: #3b3838;
+  --fd-green: #1b8a6b;
+  --fd-mint: #3ce2a7;
+  --fd-ink: #2a2f2d;
+  --fd-muted: #6c7874;
+  --fd-line: #dee4e1;
+  display: block;
+  background: var(--fd-bg);
+  font: 14px/1.4 Calibri, "Segoe UI", Carlito, Arial, sans-serif;
+  letter-spacing: normal;
+}
+.fd-reference .fd-reference-wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+.fd-reference .fd-reference-header {
+  background: var(--fd-dark); color: #fff; text-align: center;
+  border-top: 10px solid var(--fd-green); border-bottom: 10px solid var(--fd-mint);
+  padding: 34px 0 30px;
+}
+.fd-reference .fd-reference-brand { display: inline-flex; align-items: center; text-decoration: none; color: #fff; gap: 20px; }
+.fd-reference .fd-reference-brand svg { max-width: 100%; }
+.fd-reference .fd-reference-header h1 { color: var(--fd-mint); font-size: 40px; margin: 22px 0 4px; font-weight: 700; line-height: 1.2; }
+.fd-reference .fd-reference-header p { color: #ccd9d4; font-size: 15px; margin: 8px 0 18px; }
+.fd-reference .fd-reference-header .fd-reference-owner { font-size: 21px; color: #fff; margin: 0; }
+.fd-reference .fd-reference-dates { display: inline-flex; flex-direction: column; border: 1px solid var(--fd-mint); border-radius: 8px; padding: 10px 22px; max-width: 100%; gap: 3px; }
+.fd-reference .fd-reference-dates b { color: var(--fd-mint); font-size: 11px; letter-spacing: .06em; }
+.fd-reference .fd-reference-dates small { color: #ccd9d4; font-size: 12px; }
+.fd-reference .fd-reference-nav { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 2px solid var(--fd-mint); box-shadow: 0 2px 8px #0000000f; }
+.fd-reference .fd-reference-nav nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 9px; padding-bottom: 9px; }
+.fd-reference .fd-reference-nav button { border: 0; background: transparent; border-radius: 6px; font-weight: 700; color: #0f5e49; padding: 6px 10px; font-size: 13px; }
+.fd-reference .fd-reference-nav button:hover, .fd-reference .fd-reference-nav button.active { background: #ddf5ec; }
+.fd-reference .fd-reference-nav .fd-button { margin-left: auto; border: 1px solid var(--fd-line); background: #f3f5f4; }
+.fd-reference .fd-reference-nav .fd-button + .fd-button { margin-left: 0; }
+.fd-reference .fd-main { width: 100%; margin: 0; min-width: 0; }
+.fd-reference .fd-content { width: 100%; max-width: 1280px; margin: auto; padding: 20px 16px; }
+.fd-reference .fd-base-banner { border: 1px solid var(--fd-line); background: #fff; border-radius: 0; color: #0f5e49; font-size: 12px; padding: 9px 12px; margin-bottom: 14px; }
+.fd-reference .fd-base-banner button { color: #0f5e49; font-size: 12px; }
+.fd-reference .fd-page-heading { background: var(--fd-dark); color: #fff; padding: 12px 20px; margin: 0; align-items: center; gap: 14px; }
+.fd-reference .fd-page-heading h2 { color: var(--fd-mint); margin: 0; font-size: 20px; font-weight: 700; }
+.fd-reference .fd-page-heading p { color: #e6ece9; font-size: 12px; margin: 4px 0 0; }
+.fd-reference .fd-page-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fd-reference .fd-page-actions .fd-button { font-size: 11px; padding: 6px 9px; }
+.fd-reference .fd-button { border-radius: 6px; font-size: 12px; font-weight: 700; padding: 7px 12px; min-height: 32px; }
+.fd-reference .fd-button.primary { background: var(--fd-green); color: #fff; }
+.fd-reference .fd-button.secondary { color: #0f5e49; background: #f3f5f4; border-color: var(--fd-line); }
+.fd-reference .fd-filters { background: #fff; border-radius: 0; margin: 0 0 22px; padding: 10px 14px; border: 0; border-bottom: 2px solid var(--fd-mint); gap: 14px; }
+.fd-reference .fd-filter-leading { display: none; }
+.fd-reference .fd-field > span:first-child { color: var(--fd-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.fd-reference .fd-field select, .fd-reference .fd-field input, .fd-reference .fd-field textarea { color: var(--fd-ink); font-size: 13px; border-color: var(--fd-line); border-radius: 6px; padding: 7px 9px; background: #fff; }
+.fd-reference .fd-filters .fd-field select { background: #f3f5f4; }
+.fd-reference .fd-filters .fd-field { width: auto; min-width: 150px; }
+.fd-reference .fd-search-box { min-width: 0; }
+.fd-reference .fd-search-box input { background: transparent; }
+.fd-reference .fd-stats { gap: 10px; margin-bottom: 18px; }
+.fd-reference .fd-summary-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fd-reference .fd-stat { background: #f3f5f4; border: 0; border-radius: 0; border-bottom: 2px solid var(--fd-green); padding: 10px 11px; box-shadow: none; }
+.fd-reference .fd-stat > div { color: var(--fd-muted); font-size: 10.5px; text-transform: uppercase; font-weight: 700; }
+.fd-reference .fd-stat > div svg { display: none; }
+.fd-reference .fd-stat > strong { color: var(--fd-green); font-size: 23px; margin-top: 8px; font-weight: 700; white-space: nowrap; }
+.fd-reference .fd-stat > p { color: var(--fd-muted); font-size: 11px; margin: 5px 0 0; }
+.fd-reference .fd-stat.accent { border-color: #a8332a; background: #f8efed; }
+.fd-reference .fd-stat.accent > strong { color: #a8332a; }
+.fd-reference .fd-summary-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.fd-reference .fd-panel { border: 0; border-radius: 0; box-shadow: 0 1px 4px #00000014; margin-bottom: 22px; }
+.fd-reference .fd-panel-heading { padding: 10px 16px; background: var(--fd-dark); color: #fff; align-items: center; }
+.fd-reference .fd-panel h2 { color: var(--fd-mint); font-size: 17px; font-weight: 700; letter-spacing: normal; }
+.fd-reference .fd-panel-heading .fd-eyebrow { color: #e6ece9; font-size: 10px; letter-spacing: .04em; margin-bottom: 3px; }
+.fd-reference .fd-panel-heading .fd-badge { background: transparent; color: var(--fd-mint); font-size: 12px; }
+.fd-reference .fd-panel-heading .fd-field > span { color: #e6ece9; }
+.fd-reference .fd-panel-heading select { padding: 4px 7px; max-width: 180px; }
+.fd-reference .fd-badge { border-radius: 10px; font-size: 11px; font-weight: 700; color: #0f5e49; background: #ddf5ec; padding: 2px 8px; }
+.fd-reference .fd-badge.amber { background: #fff1cc; color: #8a6100; }
+.fd-reference .fd-badge.red { background: #f8dcd8; color: #a8332a; }
+.fd-reference .fd-badge.neutral { background: #f3f5f4; color: #6c7874; }
+.fd-reference .fd-two-columns, .fd-reference .fd-fund-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.fd-reference .fd-allocation-bars { padding: 16px 20px; }
+.fd-reference .fd-allocation-row { display: grid; grid-template-columns: minmax(100px, 40%) minmax(0, 1fr) 55px; gap: 9px; align-items: center; font-size: 12px; margin: 7px 0; }
+.fd-reference .fd-allocation-row > span { text-align: right; overflow-wrap: anywhere; }
+.fd-reference .fd-allocation-row > strong { font-size: 11.5px; color: #0f5e49; text-align: right; }
+.fd-reference .fd-allocation-track { height: 13px; background: #f3f5f4; }
+.fd-reference .fd-allocation-track i { height: 100%; display: block; background: var(--fd-green); }
+.fd-reference table { font-size: 12.5px; border-collapse: collapse; width: 100%; }
+.fd-reference th { background: var(--fd-dark); color: #fff; padding: 7px 8px; font-size: 12px; font-weight: 700; white-space: normal; }
+.fd-reference td { color: var(--fd-ink); padding: 7px 8px; font-size: 12.5px; border-bottom: 1px solid var(--fd-line); }
+.fd-reference tbody tr:nth-child(even) td { background: #f3f5f4; }
+.fd-reference tbody tr:hover td { background: #e3f1eb; }
+.fd-reference .fd-table-link { font-size: 12.5px !important; font-weight: 700; color: #0f5e49; text-align: left; }
+.fd-reference td small { color: var(--fd-muted); font-size: 11px; }
+.fd-reference .negative { color: #a8332a; }
+.fd-reference .fd-caption, .fd-reference .fd-panel-note, .fd-reference .fd-disclaimer { color: var(--fd-muted); font-size: 12px; line-height: 1.5; }
+.fd-reference .fd-panel-note button { color: #0f5e49; font-size: 12px; }
+.fd-reference .fd-caption a, .fd-reference td a { color: #0f5e49; }
+.fd-reference .fd-empty { padding: 22px 16px; }
+.fd-reference .fd-empty h3 { font-size: 15px; color: #0f5e49; }
+.fd-reference .fd-empty p { color: var(--fd-muted); font-size: 12px; }
+.fd-reference .fd-performance-summary { gap: 10px; margin: 14px 20px; }
+.fd-reference .fd-performance-summary > div { border-radius: 0; padding: 10px; background: #ddf5ec; border: 0; }
+.fd-reference .fd-performance-summary strong { font-size: 22px; color: #0f5e49; }
+.fd-reference .fd-performance-summary small { font-size: 11px; color: #526b60; }
+.fd-reference .fd-section-label { font-size: 11px; color: #0f5e49; padding: 10px 16px; }
+.fd-reference .fd-fund-select, .fd-reference .fd-account-select { margin: 12px 16px; width: auto; min-width: 0; }
+.fd-reference .fd-panel .fd-fund-select { max-width: none; display: flex; flex-direction: column; }
+.fd-reference .fd-fund-select select, .fd-reference .fd-account-select select { width: 100%; max-width: 100%; min-width: 0; font-size: 15px; font-weight: 700; border: 1px solid var(--fd-green); }
+.fd-reference .fd-account-select select { font-size: 13px; }
+.fd-reference .fd-fund-info { padding: 16px; gap: 10px; }
+.fd-reference .fd-fund-info span { color: var(--fd-muted); font-size: 11px; }
+.fd-reference .fd-fund-info strong { color: var(--fd-ink); font-size: 13px; overflow-wrap: anywhere; }
+.fd-reference .fd-fund-layout .fd-panel > .fd-button { margin: 0 16px 12px; }
+.fd-reference .fd-period-select { margin: 12px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.fd-reference .fd-period-select select { width: auto; max-width: 150px; }
+.fd-reference .fd-return-card { margin: 10px 12px; padding: 10px 12px; border: 1px solid var(--fd-line); border-top: 3px solid var(--fd-mint); }
+.fd-reference .fd-return-card.current { border-top-color: var(--fd-muted); background: #f3f5f4; }
+.fd-reference .fd-return-title .fd-eyebrow { font-size: 10px; color: var(--fd-muted); letter-spacing: .03em; }
+.fd-reference .fd-return-title h3 { font-size: 14.5px; font-weight: 700; color: var(--fd-ink); margin: 2px 0 10px; }
+.fd-reference .fd-return-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.fd-reference .fd-return-grid > div { padding: 5px 7px; border: 1px solid var(--fd-line); }
+.fd-reference .fd-return-grid > div.selected { background: #ddf5ec; border-color: var(--fd-green); }
+.fd-reference .fd-return-grid span { color: var(--fd-muted); font-size: 10px; margin-bottom: 3px; white-space: normal; }
+.fd-reference .fd-return-grid strong { font-size: 15px; color: var(--fd-green); font-weight: 700; }
+.fd-reference .fd-return-card.current .fd-return-grid strong { color: var(--fd-ink); }
+.fd-reference .fd-return-grid strong.negative { color: #a8332a; }
+.fd-reference .fd-return-card .fd-caption { font-size: 11px; padding: 0; margin: 8px 0; }
+.fd-reference .fd-return-difference { margin: 9px 0 0; font-size: 12.5px; }
+.fd-reference .fd-return-difference b { color: var(--fd-green); }
+.fd-reference .fd-return-card > .fd-button { font-size: 11px; margin-top: 3px; }
+.fd-reference .fd-disclaimer { padding: 0 16px 16px; }
+.fd-reference .fd-account-review { padding: 14px 16px; }
+.fd-reference .fd-account-review h3 { color: var(--fd-ink); font-size: 15px; }
+.fd-reference .fd-account-review p { font-size: 12.5px; }
+.fd-reference .fd-account-review .fd-caption { font-size: 11px; }
+.fd-reference .fd-alert h3 { font-size: 15px; }
+.fd-reference .fd-alert p, .fd-reference .fd-task p { font-size: 13px; color: #4d5f57; }
+.fd-reference .fd-alert-next, .fd-reference .fd-alert-next b, .fd-reference .fd-alert-meta, .fd-reference .fd-source { color: #52675c; font-size: 11px; }
+.fd-reference .fd-alert-top > span:last-child { color: var(--fd-muted); font-size: 11px; }
+.fd-reference .fd-priority-tabs button { font-size: 11px; color: #0f5e49; }
+.fd-reference .fd-text-button, .fd-reference .fd-small-button { font-size: 12px !important; color: #0f5e49 !important; }
+.fd-reference .fd-footer { color: var(--fd-muted); font-size: 11px; border-top: 2px solid var(--fd-mint); margin-top: 10px; }
+.fd-reference .fd-footer button { font-size: 11px; }
+.fd-reference .fd-client-summary strong { color: var(--fd-ink); }
+.fd-reference .fd-client-summary span, .fd-reference .fd-task small { color: var(--fd-muted); font-size: 11px; }
+.fd-reference .fd-modal-heading { background: var(--fd-dark); color: #fff; }
+.fd-reference .fd-modal-heading h2 { color: var(--fd-mint); }
+.fd-reference .fd-modal-intro, .fd-reference .fd-method p, .fd-reference .fd-meeting p, .fd-reference .fd-meeting li { color: #52675c; font-size: 13px; }
+@media (max-width: 1100px) {
+  .fd-reference .fd-summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fd-reference .fd-reference-nav .fd-button { margin-left: 0; }
+}
+@media (max-width: 980px) {
+  .fd-reference .fd-fund-layout, .fd-reference .fd-two-columns { grid-template-columns: minmax(0, 1fr); }
+  .fd-reference .fd-reference-nav { position: static; }
+  .fd-reference .fd-reference-header h1 { font-size: 32px; }
+  .fd-reference .fd-page-heading { flex-wrap: wrap; }
+  .fd-reference .fd-page-actions { justify-content: flex-start; }
+}
+@media (max-width: 560px) {
+  .fd-reference .fd-content { padding: 16px 12px; }
+  .fd-reference .fd-reference-header { padding: 26px 0; }
+  .fd-reference .fd-reference-header h1 { font-size: 30px; }
+  .fd-reference .fd-reference-brand { max-width: 100%; }
+  .fd-reference .fd-reference-header .fd-reference-owner { font-size: 17px; }
+  .fd-reference .fd-reference-nav nav { gap: 3px; padding-left: 10px; padding-right: 10px; }
+  .fd-reference .fd-reference-nav button { font-size: 12px; padding: 7px 8px; }
+  .fd-reference .fd-summary-stats, .fd-reference .fd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fd-reference .fd-stat > strong { font-size: 21px; }
+  .fd-reference .fd-filters { flex-wrap: wrap; gap: 10px; }
+  .fd-reference .fd-filters .fd-field { flex: 1 1 125px; min-width: 0; }
+  .fd-reference .fd-filters .fd-search { flex-basis: 100%; }
+  .fd-reference .fd-return-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fd-reference .fd-fund-info, .fd-reference .fd-client-summary { grid-template-columns: minmax(0, 1fr); }
+  .fd-reference .fd-performance-summary { grid-template-columns: minmax(0, 1fr); }
+  .fd-reference .fd-page-heading { padding: 12px; }
+  .fd-reference .fd-panel-heading { flex-wrap: wrap; padding: 10px 12px; }
+  .fd-reference .fd-page-actions .fd-button { font-size: 11px; }
+  .fd-reference .fd-allocation-row { grid-template-columns: minmax(90px, 40%) minmax(0, 1fr) 50px; gap: 6px; }
+}
+@media print {
+  .funds-app.fd-reference { display: block; background: #fff; }
+  .fd-reference .fd-reference-nav, .fd-reference .fd-page-actions, .fd-reference .fd-summary-actions { display: none; }
+  .fd-reference .fd-reference-header { padding: 16px 0; }
+  .fd-reference .fd-reference-header h1 { font-size: 28px; }
+  .fd-reference .fd-panel { box-shadow: none; }
+  .fd-reference .fd-fund-layout { display: block; }
+  .fd-reference .fd-panel-heading { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
