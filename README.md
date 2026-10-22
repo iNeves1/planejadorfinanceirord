@@ -1,42 +1,33 @@
 # RD Investimentos — Carteira de fundos
 
-Painel React/Vite para organizar prioridades, consultar exposição por conta e fundo e acompanhar conversas. A rota `/` abre o painel. O formulário de planejamento patrimonial anterior foi preservado em `/planejamento`.
+Painel de posições reais, revisões por cliente/fundo e acompanhamento. A rota `/` exige acesso privado e carrega a carteira do servidor. Não há dados nem fallback de demonstração. O formulário anterior permanece em `/planejamento`.
 
-A aplicação inicia com **dados fictícios identificados**. Posições e retornos podem ser importados por CSV e alternativas condicionais por um pacote JSON local, com identificação, rentabilidades e fonte. A pesquisa técnica permanece fora do site. Não há autenticação, banco de dados ou persistência de atendimentos. As importações são locais e temporárias; use uma base anonimizada para validar o protótipo.
+A autenticação e a persistência precisam ser ativadas no projeto Vercel antes de acessar dados reais online. O frontend e o repositório não contêm posições ou credenciais. A pesquisa de seleção fica fora da interface; sugestões apresentam identificação, retornos históricos e fonte.
 
-Leia [funcionalidades, formato CSV, limitações e testes](docs/painel-fundos.md).
-
-Para gerar um site que abre em um único HTML, sem instalação no computador de quem vai usá-lo:
+Leia [funcionalidades, configuração privada, contratos e testes](docs/painel-fundos.md).
 
 ```sh
-npm ci
-npm run build:offline
+npm ci --cache /tmp/rd-npm-cache --no-audit --no-fund
+npm test
+npm run build:public
+PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/production-smoke.mjs
 ```
 
-O arquivo `dist/rd-fundos.html` contém a aplicação com demonstração identificada. No site, “Importar posições” também abre um arquivo de trabalho `.rdfundos`, que reúne a carteira, revisões por conta, alternativas e atendimentos. “Salvar trabalho” exporta o histórico para continuar em outra sessão. O arquivo é privado e processado no navegador, sem upload.
+## Publicação privada
 
-Para uma cópia HTML já preenchida com uma carteira, gere-a **fora do checkout**, após o build:
+`api/session.js` autentica o proprietário do workspace. `api/workspace.js` entrega a carteira somente com sessão válida e salva alterações no Vercel Blob privado. Configure os segredos `RD_LOGIN_SALT`, `RD_LOGIN_HASH`, `RD_SESSION_SECRET` e `RD_WORKSPACE_GZIP` apenas no servidor, e conecte um Blob privado. Nenhum deles usa prefixo `VITE_`. Sem configuração, o acesso fica fechado e nenhuma carteira substituta é exibida.
+
+Os backups `.rdfundos` preservam posições, referências, revisões e atendimentos. O salvamento online usa revisões para impedir perda de alterações entre sessões. Datas, origens e pendências permanecem visíveis. Filtros não são controles de acesso; o acesso atual é de um único proprietário para a carteira completa.
+
+## Cópia HTML privada
+
+Após o build, gere a cópia preenchida fora do repositório:
 
 ```sh
 node scripts/build-offline.mjs --workspace /caminho/privado/carteira.rdfundos --output /caminho/privado/site.html
 ```
 
-Essa cópia contém contas e decisões; deve ficar em local privado. O gerador impede salvar HTML preenchido dentro do repositório. A aplicação não se conecta à rede nessa versão independente; fontes são links abertos por ação do usuário.
-
-## Publicação na Vercel
-
-`vercel.json` configura Vite, o build `npm run build:public`, a pasta `dist`, os headers e o fallback de navegação. A versão publicada começa em demonstração; carteiras e decisões são carregadas pelo arquivo privado no navegador. O HTML preenchido e os `.rdfundos` não devem ser publicados.
-
-O build público é limpo pelo Vite e conferido por `scripts/check-public-build.mjs`, que interrompe a publicação se encontrar documentos de clientes ou HTML com carteira incorporada. `.vercelignore` exclui arquivos privados e diretórios auxiliares do upload. O painel na raiz bloqueia conexões de dados com CSP; o formulário legado mantém sua rota e sua integração próprias.
-
-Após autenticar a conta Vercel, execute `vercel --prod` na raiz deste repositório. Nenhum token é incluído no projeto. O deploy precisa ser concluído e a URL verificada antes de ser anunciado como publicado.
-
-```sh
-npm ci --cache /tmp/rd-npm-cache --no-audit --no-fund
-npm run dev
-npm run build
-node --test tests/funds.test.js
-```
+O gerador exige uma carteira validada e impede salvar o HTML preenchido no checkout. Essa cópia tem código e estilos incorporados, funciona sem conexões de dados e guarda alterações por exportação de backup. Não publique o HTML privado ou seus backups.
 
 ## Formulário legado
 

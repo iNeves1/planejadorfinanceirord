@@ -6,6 +6,19 @@ import path from "node:path";
 import { marketFixture } from "./fixtures/workspace.js";
 import { importWorkspace } from "../src/funds/workspace.js";
 import { importPositions } from "../src/funds/model.js";
+import session from "../api/session.js";
+import { createWorkspaceHandler } from "../api/workspace.js";
+import { loadWorkspace, saveWorkspace, Conflict } from "../server/workspace-store.js";
+import { serverFixture, testPassword } from "./fixtures/server.js";
+Object.assign(process.env, serverFixture(), { BLOB_READ_WRITE_TOKEN: "sintetico-somente-armazenamento-em-memoria" });
+delete process.env.BLOB_STORE_ID;
+let saved = null, writes = 0;
+const storage = { async read() { return saved; }, async write(path, content, revision) {
+  if (revision !== (saved?.revision || null)) throw new Conflict();
+  saved = { content, revision: `saved-${++writes}` }; return saved.revision;
+} };
+const workspace = createWorkspaceHandler({ load: () => loadWorkspace(process.env, storage),
+  save: (content, revision) => saveWorkspace(content, revision, process.env, storage) });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "vercel.json"), "utf8"));
@@ -13,6 +26,8 @@ const types = { ".html": "text/html", ".js": "application/javascript", ".css": "
 const server = createServer(async (req, res) => {
   try {
     const pathname = new URL(req.url, "http://localhost").pathname;
+    if (pathname === "/api/session") return await session(req, res);
+    if (pathname === "/api/workspace") return await workspace(req, res);
     const relative = pathname.startsWith("/assets/") || pathname === "/logo.png" ? pathname.slice(1) : "index.html";
     const file = path.resolve(root, "dist", relative);
     if (!file.startsWith(path.join(root, "dist") + path.sep)) { res.writeHead(404); res.end(); return; }
@@ -31,12 +46,15 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("request", (r) => { if (!r.url().startsWith(url) && /^https?:/.test(r.url())) external.push(r.url()); });
   const response = await page.goto(url);
-  assert.ok(response.headers()["content-security-policy"].includes("connect-src 'none'"));
-  await page.getByText("Modo demonstração", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Importar posições", exact: true }).click();
-  await page.getByLabel("Arquivo de carteira").setInputFiles({ name: "carteira-teste.rdfundos", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(marketFixture())) });
-  await page.getByRole("button", { name: "Confirmar e usar esta base" }).click();
-  await page.getByText("Carteira privada · arquivo de trabalho", { exact: true }).waitFor();
+  assert.ok(response.headers()["content-security-policy"].includes("connect-src 'self'"));
+  await page.getByRole("button", { name: "Entrar na carteira", exact: true }).waitFor();
+  const denied = await page.request.get(url + "api/workspace");
+  assert.equal(denied.status(), 401);
+  assert.ok(!(await denied.text()).includes("Conta de teste"));
+  assert.ok(!/Modo demonstração|Cliente exemplo/.test(await page.locator("body").innerText()));
+  await page.getByLabel("Senha de acesso").fill(testPassword);
+  await page.getByRole("button", { name: "Entrar na carteira", exact: true }).click();
+  await page.getByText("Carteira real · acesso privado", { exact: true }).waitFor();
   const priorityPanel = page.locator("section").filter({ has: page.getByRole("heading", { name: "Contas com maior exposição a revisões prioritárias", exact: true }) });
   assert.equal(await priorityPanel.locator("tbody tr").count(), 1);
   assert.ok((await priorityPanel.innerText()).includes("Conta de teste 1"));
@@ -63,10 +81,29 @@ try {
   assert.ok(saved.suggestedFilename().endsWith(".rdfundos"));
   const restored = importWorkspace(await readFile(await saved.path(), "utf8"));
   assert.deepEqual(restored.data.market, marketFixture().market);
+  await page.getByRole("navigation").getByRole("button", { name: "Acompanhamento", exact: true }).click();
+  await page.getByRole("button", { name: "Registrar decisão", exact: true }).click();
+  await page.getByLabel("O que foi conversado ou decidido?").fill("Decisão de teste preservada pelo servidor privado.");
+  const persistenceResponse = page.waitForResponse((response) => response.url().endsWith("/api/workspace") && response.request().method() === "PUT");
+  await page.getByRole("button", { name: "Salvar registro", exact: true }).click();
+  assert.equal((await persistenceResponse).status(), 200);
+  await page.getByText("Trabalho salvo no acesso privado.", { exact: true }).waitFor();
+  assert.ok(writes > 0);
+  await page.reload();
+  await page.getByText("Carteira real · acesso privado", { exact: true }).waitFor();
+  await page.getByRole("navigation").getByRole("button", { name: "Acompanhamento", exact: true }).click();
+  await page.getByText("Decisão de teste preservada pelo servidor privado.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await page.getByRole("button", { name: "Entrar na carteira", exact: true }).waitFor();
+  assert.equal((await page.request.get(url + "api/workspace")).status(), 401);
+  delete process.env.RD_WORKSPACE_GZIP;
+  await page.reload();
+  await page.getByText("A carteira real aguarda a ativação do acesso privado no servidor.", { exact: true }).waitFor();
+  assert.ok(!/Modo demonstração|Conta de teste/.test(await page.locator("body").innerText()));
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
   const legacy = await page.request.get(url + "planejamento");
   assert.equal(legacy.status(), 200);
   assert.ok((await legacy.text()).includes('<div id="root"></div>'));
-  console.log("PASS: build de produção com headers Vercel; índices, cobertura parcial, ranking por conta, exportação por fundo e backup v2 sob CSP; mobile sem overflow; sem solicitações externas; fallback SPA do formulário legado.");
+  console.log("PASS: login obrigatório, carteira automática autenticada, salvamento e restauração de decisões, logout, índices e cobertura, CSV por fundo, backup v2, mobile e CSP sem serviços externos; sem dados demonstrativos.");
 } finally { await browser.close(); server.close(); }

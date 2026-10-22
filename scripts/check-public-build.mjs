@@ -16,6 +16,13 @@ async function check(directory) {
       if (/<script\b[^>]*\bid\s*=\s*["']rd-private-workspace["']/i.test(html))
         throw new Error("Carteira privada incorporada ao HTML. Publicação interrompida.");
     }
+    if (/\.(js|html)$/.test(entry.name)) {
+      const content = await readFile(file, "utf8");
+      if (/Modo demonstração|Cliente exemplo 0|Horizonte Crédito Privado|Exemplo Crédito Seleção|demo-credito|demo-macro/.test(content))
+        throw new Error("Dados de demonstração encontrados na publicação. Build interrompido.");
+      if (/RD_WORKSPACE_GZIP|RD_LOGIN_HASH|RD_SESSION_SECRET|vercel_blob_rw_/.test(content))
+        throw new Error("Configuração privada do servidor encontrada na saída pública.");
+    }
     checked++;
   }
 }

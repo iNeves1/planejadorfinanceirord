@@ -33,7 +33,6 @@ import {
   FundEmpty as Empty,
 } from "./components/ui.jsx";
 import FinancialOnboarding from "./FinancialOnboarding.jsx";
-import { demoData, demoAlternatives } from "./funds/demo.js";
 import {
   money,
   compact,
@@ -52,8 +51,10 @@ import {
   download,
 } from "./funds/model.js";
 import "./funds/funds.css";
-import { importWorkspace, exportWorkspace, readInitialWorkspace } from "./funds/workspace.js";
+import { importWorkspace, exportWorkspace } from "./funds/workspace.js";
 import Performance from "./funds/Performance.jsx";
+import PrivateAccess from "./funds/PrivateAccess.jsx";
+import { usePrivateSave } from "./funds/usePrivateSave.js";
 import { benchmarkComparison, fundReference } from "./funds/performance.js";
 
 const navigation = [
@@ -84,16 +85,12 @@ const textMatch = (value, query) =>
         .toLowerCase(),
     );
 
-function Returns({ fund, current = false, demo = false }) {
+function Returns({ fund, current = false }) {
   return (
     <article className={`fd-return-card ${current ? "current" : ""}`}>
       <div className="fd-return-title">
         <span className="fd-eyebrow">
-          {current
-            ? "Fundo atual"
-            : demo
-              ? "Alternativa fictícia · demonstração"
-              : "Alternativa"}
+          {current ? "Fundo atual" : "Alternativa"}
         </span>
         <h3>{fund.name}</h3>
       </div>
@@ -109,9 +106,9 @@ function Returns({ fund, current = false, demo = false }) {
       </div>
       <p className="fd-caption">
         {fund.date
-          ? `Referência: ${dateLabel(fund.date)} · ${demo ? "retornos fictícios" : "retornos históricos do fundo"}`
+          ? `Referência: ${dateLabel(fund.date)} · retornos históricos do fundo`
           : "Rentabilidade ainda não verificada."}
-        {!demo && fund.sourceUrl && <> · <a href={fund.sourceUrl} target="_blank" rel="noreferrer">Fonte</a></>}
+        {fund.sourceUrl && <> · <a href={fund.sourceUrl} target="_blank" rel="noreferrer">Fonte</a></>}
       </p>
     </article>
   );
@@ -224,8 +221,7 @@ function Modal({ title, children, onClose, wide = false }) {
   );
 }
 
-function FundsDashboard() {
-  const [initial] = useState(() => readInitialWorkspace(demoData));
+export function FundsDashboard({ initial, onLogout }) {
   const [data, setData] = useState(initial.data);
   const [page, setPage] = useState("day");
   const [advisor, setAdvisor] = useState("all");
@@ -246,7 +242,7 @@ function FundsDashboard() {
   const [fundSort, setFundSort] = useState("balance");
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
-  const demo = data.mode === "demo";
+  const remoteSave = usePrivateSave(data, tasks, limit, initial.remote);
   useEffect(() => setAlertCount(6), [advisor, strategy, query, priority, data]);
   useEffect(() => {
     document.title = "RD Investimentos · Carteira de fundos";
@@ -301,6 +297,7 @@ function FundsDashboard() {
   const activeClient = groupClients(
     data.positions.filter((p) => advisor === "all" || p.advisor === advisor),
   ).find((c) => c.key === clientKey);
+  const activeClientAlerts = activeClient ? buildAlerts(data, activeClient.positions, limit) : [];
   const accountBalance = (key) =>
     sum(data.positions.filter((p) => `${p.advisor}:${p.clientId}` === key));
   const scopedTasks = tasks.filter(
@@ -387,7 +384,7 @@ function FundsDashboard() {
   const fundClients = groupClients(currentFundPositions);
   function exportPositions(list = positions) {
     download(
-      `fundos_${demo ? "demonstracao_" : ""}${data.date}.csv`,
+      `fundos_${data.date}.csv`,
       positionCsv(data, list),
     );
     setNotice("CSV exportado com as posições do filtro atual.");
@@ -459,20 +456,20 @@ function FundsDashboard() {
     setNotice("Decisão registrada no histórico desta sessão.");
   }
   function Suggestions({ fund }) {
-    const alternatives = (demo ? demoAlternatives : data.suggestions)?.[fund.id] || [];
+    const alternatives = data.suggestions?.[fund.id] || [];
     return (
       <Panel
         title="Sugestões de realocação"
         eyebrow="ALTERNATIVAS PARA REVISÃO"
         action={
-          <Badge tone={demo ? "amber" : "neutral"}>
-            {demo ? "Demonstração" : alternatives.length ? "Para revisão" : "Em pesquisa"}
+          <Badge>
+            {alternatives.length ? "Para revisão" : "Em pesquisa"}
           </Badge>
         }
       >
-        <Returns fund={fund} current demo={demo} />
+        <Returns fund={fund} current />
         {alternatives.map((f) => (
-          <Returns key={f.id} fund={f} demo={demo} />
+          <Returns key={f.id} fund={f} />
         ))}
         {!alternatives.length && (
           <Empty title="Nenhuma alternativa carregada">
@@ -480,13 +477,10 @@ function FundsDashboard() {
             documentação e a compatibilidade antes de propor uma realocação.
           </Empty>
         )}
-        {!demo && <Button variant="secondary" icon={Upload} onClick={() => suggestionsRef.current?.click()}>Carregar alternativas</Button>}
+        <Button variant="secondary" icon={Upload} onClick={() => suggestionsRef.current?.click()}>Carregar alternativas</Button>
         <p className="fd-disclaimer">
-          {demo && alternatives.length
-            ? "Nomes e rentabilidades fictícios para demonstrar o formato. Não são recomendações. "
-            : ""}
           Rentabilidade passada não representa garantia de resultados futuros.
-          {!demo && alternatives.length > 0 && " Alternativas condicionais à revisão do assessor sobre documentação, perfil, objetivos, liquidez, custos e disponibilidade. Não representam ordem de troca."}
+          {alternatives.length > 0 && " Alternativas condicionais à revisão do assessor sobre documentação, perfil, objetivos, liquidez, custos e disponibilidade. Não representam ordem de troca."}
         </p>
       </Panel>
     );
@@ -527,7 +521,7 @@ function FundsDashboard() {
                   <small>
                     {f.strategy} · {f.manager}
                   </small>
-                  <small>{f.date ? `Cota: ${dateLabel(f.date)}` : "Sem retorno confirmado"}{!demo && f.sourceUrl && <> · <a href={f.sourceUrl} target="_blank" rel="noreferrer">Fonte dos retornos</a></>}</small>
+                  <small>{f.date ? `Cota: ${dateLabel(f.date)}` : "Sem retorno confirmado"}{f.sourceUrl && <> · <a href={f.sourceUrl} target="_blank" rel="noreferrer">Fonte dos retornos</a></>}</small>
                 </td>
                 <td className="fd-nowrap">{money(balance)}</td>
                 <td>{percent(total ? balance / total : 0)}</td>
@@ -592,7 +586,7 @@ function FundsDashboard() {
           <div>
             Inteligência de carteira<small>Fundos de investimento</small>
           </div>
-          <Badge>PROTÓTIPO</Badge>
+          <Badge>PRIVADO</Badge>
         </div>
         <span className="fd-nav-label">ESPAÇO DO ASSESSOR</span>
         <nav aria-label="Navegação principal">
@@ -625,8 +619,8 @@ function FundsDashboard() {
           <div className="fd-private">
             <ShieldCheck size={17} />
             <span>
-              Carteira no seu navegador
-              <small>Sem publicação de posições</small>
+              {initial.remote ? "Acesso privado" : "Carteira no seu navegador"}
+              <small>{initial.remote ? "Sessão protegida" : "Arquivo privado"}</small>
             </span>
           </div>
           <div className="fd-user">
@@ -657,30 +651,20 @@ function FundsDashboard() {
               <Bell size={19} />
               {tasks.length > 0 && <i />}
             </button>
+            {onLogout && <Button variant="secondary" onClick={async () => {
+              if (remoteSave.dirty && initial.remote?.persistent && !(await remoteSave.saveNow())) return;
+              onLogout();
+            }}>Sair</Button>}
             <span className="fd-avatar small">IN</span>
           </div>
         </header>
         <main className="fd-content" id="conteudo">
-          <div className="fd-demo-banner">
+          {initial.remote?.persistent && <p className={remoteSave.state === "error" ? "fd-error" : "fd-caption"} role="status">{remoteSave.message}</p>}
+          <div className="fd-base-banner">
             <span>
               <span className="fd-pulse" />
-              {demo ? (
-                <>
-                  <b>Modo demonstração</b>
-                  <span className="fd-banner-detail">
-                    {" "}
-                    · clientes, fundos e rentabilidades fictícios.
-                  </span>
-                </>
-              ) : (
-                <>
-                  <b>{data.workspace ? "Carteira privada · arquivo de trabalho" : "CSV local · sessão temporária"}</b>
-                  <span className="fd-banner-detail">
-                    {" "}
-                    · contas separadas; sem sincronização com a custódia.
-                  </span>
-                </>
-              )}
+              <b>{initial.remote ? "Carteira real · acesso privado" : data.workspace ? "Carteira privada · arquivo de trabalho" : "CSV local · sessão temporária"}</b>
+              <span className="fd-banner-detail"> · referência: {dateLabel(data.date)} · posições dos relatórios enviados.</span>
             </span>
             <button
               onClick={() => {
@@ -690,7 +674,7 @@ function FundsDashboard() {
               }}
             >
               {" "}
-              {demo ? "Carregar uma base" : "Trocar base"}{" "}
+              Trocar base{" "}
               <ArrowRight size={14} />
             </button>
           </div>
@@ -725,7 +709,8 @@ function FundsDashboard() {
               </p>
             </div>
             <div className="fd-page-actions">
-              {!demo && <Button variant="secondary" icon={Download} onClick={saveWorkspace}>Salvar trabalho</Button>}
+              <Button variant="secondary" icon={Download} onClick={saveWorkspace}>Salvar trabalho</Button>
+              {initial.remote?.persistent && <Button variant="secondary" onClick={remoteSave.saveNow} disabled={remoteSave.state === "saving"}>{remoteSave.state === "saving" ? "Salvando…" : "Salvar no site"}</Button>}
               <Button
                 variant="secondary"
                 icon={Download}
@@ -1077,9 +1062,9 @@ function FundsDashboard() {
                 />
                 <Stat
                   label="Fonte das posições"
-                  value={demo ? "Demonstração" : "CSV local"}
+                  value={initial.remote ? "XPerformance" : "Arquivo privado"}
                   icon={FileText}
-                  note={demo ? "Dados integralmente fictícios" : data.source}
+                  note={data.source}
                 />
               </div>
               <div className="fd-two-columns">
@@ -1294,6 +1279,16 @@ function FundsDashboard() {
                   )}
                 </Panel>
               </div>
+              <Panel title="O que revisar nesta conta" eyebrow="MOTIVO E PRÓXIMA ANÁLISE">
+                {activeClientAlerts.map((alert) => <article className="fd-account-review" key={alert.id}>
+                  <Badge tone={alert.severity === "high" ? "amber" : "neutral"}>{alert.type}</Badge>
+                  <h3>{funds.find((fund) => fund.id === alert.fundId)?.name}</h3>
+                  <p>{alert.reason}</p><p><strong>Próxima análise:</strong> {alert.next}</p>
+                  <p className="fd-caption">Exposição: {money(alert.balance)} · {alert.period} · Fonte: {alert.source}</p>
+                  <Button variant="secondary" onClick={() => makeTask({ clientKey: activeClient.key, fundId: alert.fundId, title: `Revisar ${funds.find((fund) => fund.id === alert.fundId)?.name}`, notes: `${alert.reason}\nPróxima análise: ${alert.next}` })}>Preparar conversa sobre este fundo</Button>
+                </article>)}
+                {!activeClientAlerts.length && <Empty title="Sem revisão sinalizada nos dados disponíveis">A ausência de alerta não confirma adequação aos objetivos do cliente. Perfil, objetivos e restrições são conferidos pelo assessor.</Empty>}
+              </Panel>
             </>
           )}
 
@@ -1338,7 +1333,7 @@ function FundsDashboard() {
                       eyebrow={selectedFund.strategy}
                       action={
                         <Badge>
-                          {demo ? "Fundo fictício" : "Base importada"}
+                          Posição importada
                         </Badge>
                       }
                     >
@@ -1540,9 +1535,7 @@ function FundsDashboard() {
               Inteligência de carteira
             </span>
             <span>
-              {demo
-                ? "Demonstração · dados fictícios"
-                : `Posições de ${dateLabel(data.date)}`}{" "}
+              {`Posições de ${dateLabel(data.date)}`}{" "}
               <span className="fd-footer-divider">·</span>
               <button onClick={() => setModal("method")}>
                 Fontes e metodologia
@@ -1650,14 +1643,7 @@ function FundsDashboard() {
           )}
           <div className="fd-modal-bottom">
             <span>Trocar a base limpa os acompanhamentos da sessão.</span>
-            {!demo && (
-              <button
-                className="fd-text-button"
-                onClick={() => reset(demoData)}
-              >
-                Voltar à demonstração
-              </button>
-            )}
+
           </div>
         </Modal>
       )}
@@ -1843,10 +1829,8 @@ function FundsDashboard() {
           onClose={() => setModal(null)}
         >
           <div className="fd-meeting" id="resumo-reuniao">
-            <Badge tone={demo ? "amber" : "neutral"}>
-              {demo
-                ? "Demonstração · dados fictícios"
-                : "Resumo da sessão local"}
+            <Badge>
+              Resumo do atendimento
             </Badge>
             <h3>{taskSeed.client}</h3>
             <p>
@@ -1899,7 +1883,7 @@ function FundsDashboard() {
               onClick={() =>
                 download(
                   "resumo_reuniao.txt",
-                  `${demo ? "DEMONSTRAÇÃO — DADOS FICTÍCIOS\n" : ""}${taskSeed.client}\n${taskSeed.title}\nFundo: ${taskSeed.fund}\nFonte das posições: ${data.source}\nReferência: ${dateLabel(data.date)}\nResponsável: ${taskSeed.owner}\nPróxima revisão: ${dateLabel(taskSeed.due)}\n\n${taskSeed.notes}\n\nHistórico:\n${taskSeed.history.map((h) => `${h.at} | ${h.status}\n${h.notes}`).join("\n\n")}`,
+                  `${taskSeed.client}\n${taskSeed.title}\nFundo: ${taskSeed.fund}\nFonte das posições: ${data.source}\nReferência: ${dateLabel(data.date)}\nResponsável: ${taskSeed.owner}\nPróxima revisão: ${dateLabel(taskSeed.due)}\n\n${taskSeed.notes}\n\nHistórico:\n${taskSeed.history.map((h) => `${h.at} | ${h.status}\n${h.notes}`).join("\n\n")}`,
                   "text/plain;charset=utf-8",
                 )
               }
@@ -1920,8 +1904,8 @@ function FundsDashboard() {
           onClose={() => setModal(null)}
         >
           <div className="fd-method">
-            <Badge tone={demo ? "amber" : "neutral"}>
-              {demo ? "Demonstração" : "Arquivo privado"}
+            <Badge>
+              Carteira privada
             </Badge>
             <h3>O que esta versão faz</h3>
             <p>
@@ -1935,9 +1919,8 @@ function FundsDashboard() {
             <p>
               Fonte atual: {data.source}. Data das posições:{" "}
               {dateLabel(data.date)}.{" "}
-              {demo
-                ? "Todos os clientes, produtos, retornos e eventos são sintéticos. Os cenários de desempenho, mudança e queda não são diagnósticos calculados a partir de séries reais."
-                : "O arquivo é informado pelo usuário e ainda precisa ser reconciliado com a origem. Retornos não são inferidos a partir dos saldos."}
+              Posições extraídas dos relatórios enviados. Ausências e divergências de dados
+              são mantidas como pendências. Retornos não são inferidos a partir dos saldos.
             </p>
             <h3>Sugestões de realocação</h3>
             <p>
@@ -1968,7 +1951,7 @@ function FundsDashboard() {
             <p>
               Alterações ficam na memória do navegador. Use “Salvar trabalho”
               para exportar a carteira e o histórico e reabra esse arquivo para continuar.
-              Não há sincronização, autenticação ou banco de dados. Os filtros não são
+              {initial.remote ? "O acesso online exige uma sessão autenticada. O armazenamento privado, quando ativo, preserva o trabalho no servidor; consulte o status de salvamento." : "Esta cópia é um arquivo privado, sem sincronização com o servidor."} Os filtros não são
               controles de acesso. A versão HTML privada abre a fotografia que recebeu;
               os arquivos com contas e decisões devem permanecer em local privado.
             </p>
@@ -1995,6 +1978,6 @@ export default function App() {
     window.location.pathname.replace(/\/$/, "") === "/planejamento" ? (
     <FinancialOnboarding />
   ) : (
-    <FundsDashboard />
+    <PrivateAccess Dashboard={FundsDashboard} />
   );
 }

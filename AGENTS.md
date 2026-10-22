@@ -1,18 +1,20 @@
-# Painel de fundos — contexto atualizado
+# Painel de fundos — carteira real e acesso privado
 
-O usuário autorizou a implementação do novo painel. `src/App.jsx` agora contém o painel de fundos na rota `/`; o formulário descrito abaixo permanece intacto em `src/FinancialOnboarding.jsx`, acessível em `/planejamento`. Os estilos do painel são isolados sob `.funds-app` em `src/funds/funds.css`. As novas primitivas de campos, botões e painéis estão em `src/components/ui.jsx`; reutilize-as. As regras e importação estão em `src/funds/model.js`, os dados sintéticos em `src/funds/demo.js`.
+O usuário recusou demonstrações. Não reintroduzir dados, produtos, retornos, alertas ou alternativas sintéticas no aplicativo ou no build. Fixtures anônimas existem somente em `tests/fixtures` e nunca são publicadas. A rota `/` começa no acesso privado; `/planejamento` preserva o formulário legado.
 
-Consulte `docs/painel-fundos.md` para capacidades, contratos e limitações. Não use o HTML de previdência como base de posições de fundos. Não invente sugestões reais ou métricas ausentes. A análise solicitada no Mais Retorno permanece privada, fora da interface e do bundle. Cartões de sugestão mostram somente identificação, retornos e referência. Dados e atendimentos do protótipo ficam em memória; não introduza persistência pública de dados pessoais. Filtros não são autorização. O painel não usa Web3Forms.
+`src/funds/PrivateAccess.jsx` carrega a carteira autenticada de `/api/workspace`. Não há fallback de dados quando a configuração ou a requisição falha. O HTML privado pode receber uma carteira validada em `#rd-private-workspace`, exclusivamente fora do checkout. `scripts/build-offline.mjs` exige `--workspace` e `--output` fora do checkout. Reutilize as primitivas `Fund*` em `src/components/ui.jsx` e isole estilos sob `.funds-app`.
 
-Validação: `npm run build`, `node --test tests/funds.test.js` e smoke interativo documentado. O formulário original e suas regras seguem abaixo.
+`api/session.js`, `server/access.js` e `api/workspace.js` implementam acesso do proprietário do workspace (não multiusuário). Senha scrypt e cookies HMAC Secure/HttpOnly/SameSite=Strict, expiração, checagem de origem em escritas e respostas privadas sem cache. Segredos RD_* só existem no servidor e nunca usam prefixo VITE_. O bootstrap RD_WORKSPACE_GZIP é uma variável secreta contendo o pacote validado e comprimido. A persistência usa Vercel Blob **privado**, sem URL de leitura pública, com controle de revisão para não sobrescrever outra sessão. Não imprimir, versionar ou embutir credenciais nem posições reais no frontend.
 
-Arquivo único de trabalho: `src/funds/workspace.js` importa/exporta posições, revisões externas por conta/fundo, alternativas, decisões e limite de concentração com validação estrita. O HTML independente pode ler esse pacote em `#rd-private-workspace`. `npm run build:offline` gera `dist/rd-fundos.html` somente demonstrativo; `scripts/build-offline.mjs --workspace ... --output ...` exige que HTML com dados reais fique fora do checkout. Nunca inserir contas em `src`, `public`, `dist` ou fixtures. O HTML privado usa CSP sem conexões e sem dependências externas. Validação adicional: `npm test` e `tests/offline-smoke.mjs` (Chromium gerenciado bloqueia file:, portanto o teste serve o HTML único por loopback e desliga a rede durante as interações).
+`src/funds/usePrivateSave.js` salva alterações do acesso online, informa falhas e mantém exportação de backup. No HTML local não há sincronização. Os filtros não são autorização. Nunca publicar contas em `src`, `public`, `dist` ou fixtures. A análise de seleção permanece privada; sugestões mostram identificação, retornos e referência. Ausências ficam ausentes, sem inventar CNPJ, liquidez, rentabilidade ou adequação ao cliente. O assessor assumiu conferir perfil, objetivos e restrições.
+
+Contrato em `src/funds/workspace.js`: versões v1/v2, revisões ligadas a conta/fundo, histórico e limite de concentração. Índices exigem vínculo explícito por fundo e períodos equivalentes. Médias históricas ponderadas exibem cobertura por período e não são retorno da carteira/cliente. Cada posição exposta é contada uma vez e filtros preservam o denominador completo da conta.
+
+Verificação: `npm test`, `npm run build:public` e `PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/production-smoke.mjs`. O smoke valida autenticação, carregamento automático, persistência e logout usando somente fixtures locais. O offline é validado por `tests/offline-smoke.mjs`; carteira real, sem capturas, por `tests/check-private-site.mjs /caminho/externo/site.html`. Não verificar URLs de publicação com curl/browser quando aplicar a skill de deploy; consultar status da publicação.
 
 ---
 
-Atualização dos indicadores: arquivos de trabalho v2 incluem `market` (índices e vínculo explícito por fundo) e mantêm compatibilidade com v1. Regras e contrato em `src/funds/performance.js`. Médias históricas ponderadas sempre mostram cobertura por período; nunca apresentá-las como rentabilidade da carteira/cliente. CDI não é atribuído automaticamente. Índice zero/negativo não gera razão de retornos. As 25 maiores exposições de prioridade alta usam todas as posições da conta como denominador e contam cada posição uma vez. Pesquisa técnica continua privada.
-
-# AGENTS.md
+# Formulário legado — /planejamento
 
 ## What this is
 
