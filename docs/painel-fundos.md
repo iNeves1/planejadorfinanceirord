@@ -64,6 +64,16 @@ Benchmark exige vínculo explícito e fonte por fundo. Só comparar períodos eq
 
 Mais Retorno, CVM, BACEN e documentos do veículo apoiam a pesquisa externa. O código não inventa liquidez, CNPJ, disponibilidade XP, adequação ao cliente ou alternativas. A pesquisa técnica não integra o frontend. O assessor assumiu conferir perfil, objetivos e restrições. Movimentações completas são necessárias para TWR/MWR e cálculo tributário individual.
 
+## Conferência de rentabilidade e arquivo v3
+
+V3 mantém os campos de v2 e acrescenta `audit: {checkedAt, reference}` e `positionPerformance`. A referência deve coincidir com a carteira; a data da conferência não pode anteceder o fechamento. Os registros XP têm `{account, advisor, fundId, date, month, year, months24, monthCdi, yearCdi, months24Cdi, source}` e exigem vínculo com a posição, unicidade, fonte e valores finitos ou `null`. Não há preenchimento com retorno do fundo. `months24` reproduz o relatório sem anualização. Exportação e salvamento preservam os registros e o histórico de tarefas. Arquivos v1/v2 continuam aceitos e sua serialização permanece estável, mantendo o caminho de armazenamento derivado do bootstrap.
+
+A data da carteira permanece visível separadamente da última conferência e da cobertura de retornos. O quadro de comparação apresenta o CDI BACEN utilizado nos cálculos e, quando carregado, a série `CDI-MR` como conferência de fonte, em janelas equivalentes. Diferença em p.p. e razão dos retornos são campos separados; o cálculo ocorre antes do arredondamento.
+
+Revisões `Desempenho a investigar` entram na lista inferior com identificação própria, sem inventar um benchmark. Quando a referência própria não está disponível na janela, a comparação com CDI é explicitamente de oportunidade. A lista permite consultar mês, ano, 12M e 24M a.a.; o sinal pesquisado continua fundamentado em 12M. Retornos XP ficam em tabela própria na página da conta; não são recalculados pelo CDI da janela completa do fundo.
+
+Atualizações da pesquisa são aplicadas ao workspace privado com comparação de revisão, preservando posições, tarefas, limites e curadoria. Primeiro publicar o leitor v3; depois aplicar o pacote privado validado ao objeto existente. Não substituir o bootstrap por uma fotografia antiga nem migrar tarefas sobrescrevendo outra sessão.
+
 ## Verificação
 
 `npm test` inclui importação, cobertura, índices, revisões por conta, autenticação, origem, limites de corpo, expiração, persistência e conflitos. `npm run build:public` confere a saída. Execute `PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/production-smoke.mjs` para login, carteira automática, salvamento/restauração/logout, ausência de fallback, exportações, comparador e mobile sob headers Vercel. O teste usa exclusivamente fixtures anônimas e uma loja em memória; não certifica a configuração da loja real.

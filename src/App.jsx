@@ -54,7 +54,9 @@ import Performance from "./funds/Performance.jsx";
 import Underperformance from "./funds/Underperformance.jsx";
 import PrivateAccess from "./funds/PrivateAccess.jsx";
 import { usePrivateSave } from "./funds/usePrivateSave.js";
-import { benchmarkComparison, fundReference, relocationAlternatives } from "./funds/performance.js";
+import { benchmarkComparison, fundReference, relocationAlternatives, percentagePoints } from "./funds/performance.js";
+import ComparisonGuide from "./funds/ComparisonGuide.jsx";
+import PositionPerformance from "./funds/PositionPerformance.jsx";
 
 const navigation = [
   ["day", "Resumo", LayoutDashboard],
@@ -275,6 +277,7 @@ export function FundsDashboard({ initial, onLogout }) {
     return () => clearTimeout(timer);
   }, [notice]);
   const funds = data.funds;
+  const coveredFunds = funds.filter((fund) => fund.date === data.date && fund.returns.some(Number.isFinite)).length;
   const advisors = [...new Set(data.positions.map((p) => p.advisor))].sort();
   const strategies = [...new Set(funds.map((f) => f.strategy))].sort();
   const positions = useMemo(
@@ -502,6 +505,7 @@ export function FundsDashboard({ initial, onLogout }) {
             <th>24M (a.a.)</th>
             <th>Referência · 12M</th>
             <th>% da referência · 12M</th>
+            <th>Diferença · 12M (p.p.)</th>
             <th>Revisões</th>
             <th>
               <span className="sr-only">Abrir fundo</span>
@@ -535,7 +539,8 @@ export function FundsDashboard({ initial, onLogout }) {
                   </td>
                 ))}
                 <td>{reference ? <><a href={reference.sourceUrl} target="_blank" rel="noreferrer">{reference.benchmark.name}</a><small>{percent(reference.benchmark.returns[2])}</small></> : "Não confirmada"}</td>
-                <td>{percent(comparison?.ratio)}<small>{comparison?.ratio != null ? "Razão dos retornos históricos" : "Sem dados comparáveis"}</small></td>
+                <td>{percent(comparison?.ratio)}<small>{comparison?.ratio != null ? `% de ${comparison.benchmark.name}; razão dos retornos` : "Sem dados comparáveis"}</small></td>
+                <td>{percentagePoints(comparison?.excess)}</td>
                 <td>
                   <Badge tone={count ? "amber" : "neutral"}>
                     {count
@@ -580,7 +585,7 @@ export function FundsDashboard({ initial, onLogout }) {
           <h1>Carteira de Fundos de Investimento</h1>
           <p className="fd-reference-owner">{advisor === "all" ? "Visão consolidada dos assessores" : `Assessor ${advisor}`}</p>
           <p>{clients.length} contas · {new Set(positions.map((p) => p.fundId)).size} fundos · {money(total)} em fundos</p>
-          <div className="fd-reference-dates"><b>DATAS DE REFERÊNCIA</b><span>Posições e rentabilidade: {dateLabel(data.date)}</span><small>Retornos do mês, ano, 12 meses e 24 meses anualizados, quando disponíveis</small></div>
+          <div className="fd-reference-dates"><b>DATAS DE REFERÊNCIA</b><span>Posições e rentabilidade: {dateLabel(data.date)}</span><small>Retornos do mês, ano, 12 meses e 24 meses anualizados, quando disponíveis</small>{data.audit && <small>Última conferência: {dateLabel(data.audit.checkedAt)} · carteira na data do relatório</small>}</div>
         </div>
       </header>
       <div className="fd-reference-nav">
@@ -660,6 +665,10 @@ export function FundsDashboard({ initial, onLogout }) {
               </Button>
             </div>
           </div>
+          {data.audit && <div className="fd-audit-summary">
+            <span>Conferência: <b>{dateLabel(data.audit.checkedAt)}</b> · base completa: <b>{coveredFunds} de {funds.length} fundos com retornos disponíveis</b>. {funds.length - coveredFunds} sem retorno público associado.</span>
+            <button onClick={() => { go("attention"); setPriority("Dados"); }}>Conferir pendências</button>
+          </div>}
           <div className="fd-filters">
             <div className="fd-filter-leading">
               <SlidersHorizontal size={16} />
@@ -738,6 +747,7 @@ export function FundsDashboard({ initial, onLogout }) {
               <Panel title="Alocação por gestora"><Allocation positions={positions} funds={funds} field="manager" /></Panel>
             </div>
             <Performance data={data} positions={positions} />
+            <ComparisonGuide data={data} />
             <Underperformance data={data} positions={positions} alerts={allAlerts} query={query}
               onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)}
               onClient={(key) => { go("clients"); setClientKey(key); }} />
@@ -787,6 +797,7 @@ export function FundsDashboard({ initial, onLogout }) {
                       {[
                         "Todas",
                         "Desempenho",
+                        ...(data.reviews?.some((r) => r.type === "Desempenho a investigar") ? ["Desempenho a investigar"] : []),
                         "Concentração",
                         "Mudança no fundo",
                         "Queda",
@@ -1031,6 +1042,7 @@ export function FundsDashboard({ initial, onLogout }) {
                 </Panel>
               </div>
               <Performance data={data} positions={positions} />
+              <ComparisonGuide data={data} />
               <Panel
                 title="Posições por fundo"
                 eyebrow="CARTEIRA CONSOLIDADA"
@@ -1206,6 +1218,7 @@ export function FundsDashboard({ initial, onLogout }) {
                   disponibilidade em situações extraordinárias. As rentabilidades são dos fundos, não o resultado efetivo desta conta.
                 </p>
               </Panel>
+              {data.positionPerformance && <PositionPerformance data={data} positions={activeClient.positions} />}
               <div className="fd-two-columns">
                 <Panel title="Concentração por estratégia">
                   <Allocation
@@ -1909,6 +1922,8 @@ export function FundsDashboard({ initial, onLogout }) {
               nem o pacote público.
             </p>
             <h3>Cobertura e limitações</h3>
+            <p>A revisão separa desempenho frente à referência identificada e desempenho a investigar, quando falta confirmar o benchmark. CDI de oportunidade é identificado explicitamente. A lista ampliada não representa uma ordem de venda.</p>
+            <p>Retornos transcritos do XPerformance ficam em tabela própria por conta. Os percentuais informados pela XP são preservados; não são recalculados usando o CDI da janela completa do fundo. O campo 24M do relatório não é convertido em taxa anual.</p>
             <p>
               Os indicadores consolidados são médias dos retornos dos fundos ponderadas
               pelos saldos da fotografia. Cada período exclui retornos ausentes e mostra

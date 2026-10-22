@@ -13,9 +13,10 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
     throw new Error("O arquivo de trabalho deve ter até 10 MB.");
   const input = JSON.parse(content);
   const fields = ["format", "version", "date", "positionsCsv", "curation", "reviews", "tasks", "settings"];
-  if (input?.version === 2) fields.push("market");
+  if ([2, 3].includes(input?.version)) fields.push("market");
+  if (input?.version === 3) fields.push("audit", "positionPerformance");
   if (!keysAre(input, fields) ||
-      input.format !== "rd-fundos-workspace" || ![1, 2].includes(input.version) || !validDate(input.date) ||
+      input.format !== "rd-fundos-workspace" || ![1, 2, 3].includes(input.version) || !validDate(input.date) ||
       !text(input.positionsCsv, 5 * 1024 * 1024) || !Array.isArray(input.reviews) || input.reviews.length > 20000 ||
       !Array.isArray(input.tasks) || input.tasks.length > 5000 ||
       !keysAre(input.settings, ["concentrationLimit"]) ||
@@ -24,14 +25,35 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
     throw new Error("Arquivo de trabalho inválido. Use o pacote RD Fundos ou um backup exportado pelo painel.");
   const data = importPositions(input.positionsCsv, filename);
   if (data.date !== input.date) throw new Error("A referência do pacote difere das posições.");
-  if (input.version === 2) data.market = importMarket(input.market, data);
+  if ([2, 3].includes(input.version)) data.market = importMarket(input.market, data);
+  if (input.version === 3) {
+    if (!keysAre(input.audit, ["checkedAt", "reference"]) || !validDate(input.audit.checkedAt) ||
+        input.audit.reference !== data.date || input.audit.checkedAt < data.date ||
+        !Array.isArray(input.positionPerformance) || input.positionPerformance.length > data.positions.length)
+      throw new Error("Conferência ou retornos das posições inválidos.");
+    const seen = new Set();
+    const returns = ["month", "year", "months24"], ratios = ["monthCdi", "yearCdi", "months24Cdi"];
+    data.positionPerformance = input.positionPerformance.map((entry) => {
+      const key = JSON.stringify([entry?.advisor, entry?.account, entry?.fundId]);
+      if (!keysAre(entry, ["account", "advisor", "fundId", "date", ...returns, ...ratios, "source"]) ||
+          entry.date !== data.date || !text(entry.source, 500) || seen.has(key) ||
+          !data.positions.some((p) => p.account === entry.account && p.advisor === entry.advisor && p.fundId === entry.fundId) ||
+          ![...returns, ...ratios].some((field) => entry[field] !== null) ||
+          returns.some((field) => entry[field] !== null && (typeof entry[field] !== "number" || !Number.isFinite(entry[field]) || entry[field] < -1 || entry[field] > 100)) ||
+          ratios.some((field) => entry[field] !== null && (typeof entry[field] !== "number" || !Number.isFinite(entry[field]) || Math.abs(entry[field]) > 10000)))
+        throw new Error("Retorno XP inválido, repetido ou sem vínculo com a posição.");
+      seen.add(key);
+      return entry;
+    });
+    data.audit = input.audit;
+  }
   data.suggestions = importSuggestions(JSON.stringify(input.curation), data);
   data.workspace = true;
   const reviewIds = new Set();
   data.reviews = input.reviews.map((review, index) => {
     if (!keysAre(review, ["account", "fundId", "type", "severity", "title", "reason", "next", "source", "date"]) ||
         !text(review.account, 120) || !text(review.fundId, 120) ||
-        !["Desempenho", "Dados", "Liquidez", "Mudança no fundo", "Queda"].includes(review.type) ||
+        !["Desempenho", "Desempenho a investigar", "Dados", "Liquidez", "Mudança no fundo", "Queda"].includes(review.type) ||
         !["high", "medium"].includes(review.severity) || !text(review.title, 300) ||
         !text(review.reason, 1500) || !text(review.next, 1500) || !text(review.source, 500) || review.date !== data.date)
       throw new Error(`Prioridade ${index + 1}: campos inválidos ou referência incompatível.`);
@@ -69,7 +91,7 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
 export function exportWorkspace(data, tasks, limit) {
   if (data.mode !== "imported") throw new Error("Carregue uma carteira para salvar um arquivo de trabalho.");
   const bundle = {
-    format: "rd-fundos-workspace", version: data.market ? 2 : 1, date: data.date,
+    format: "rd-fundos-workspace", version: data.audit ? 3 : data.market ? 2 : 1, date: data.date,
     positionsCsv: positionCsv(data, data.positions),
     curation: { version: 1, date: data.date, suggestions: Object.entries(data.suggestions || {}).map(([currentFundId, alternatives]) => ({ currentFundId, alternatives })) },
     reviews: (data.reviews || []).map(({ account, fundId, type, severity, title, reason, next, source, date }) => ({ account, fundId, type, severity, title, reason, next, source, date })),
@@ -77,6 +99,7 @@ export function exportWorkspace(data, tasks, limit) {
     settings: { concentrationLimit: limit },
   };
   if (data.market) bundle.market = data.market;
+  if (data.audit) { bundle.audit = data.audit; bundle.positionPerformance = data.positionPerformance || []; }
   const serialized = JSON.stringify(bundle);
   // Garante que um backup gerado também pode ser restaurado pelo mesmo contrato.
   importWorkspace(serialized);

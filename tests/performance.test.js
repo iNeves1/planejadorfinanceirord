@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { importWorkspace, exportWorkspace } from "../src/funds/workspace.js";
-import { weightedPerformance, benchmarkComparison, fundReference, relocationAlternatives } from "../src/funds/performance.js";
+import { weightedPerformance, benchmarkComparison, fundReference, relocationAlternatives, cdiComparison } from "../src/funds/performance.js";
 import { priorityClients, buildAlerts, underperformanceExposure } from "../src/funds/model.js";
-import { fixture, marketFixture } from "./fixtures/workspace.js";
+import { fixture, marketFixture, auditFixture } from "./fixtures/workspace.js";
 
 test("indicador usa somente saldo com retorno e revela cobertura parcial por período", () => {
   const { data } = importWorkspace(JSON.stringify(marketFixture()));
@@ -130,4 +130,18 @@ test("exposição a baixo desempenho lista todos os posicionados sem inventar al
   assert.equal(alerts.filter((alert) => alert.type === "Desempenho").length, 1, "preserva o alerta individual original");
   assert.equal(underperformanceExposure(data, data.positions.filter((p) => p.fundId === "F3"), alerts).clients.length, 0);
   assert.equal(underperformanceExposure(data, selected, alerts.filter((alert) => alert.type !== "Desempenho")).funds.length, 0, "concentração não é baixo desempenho");
+});
+
+test("investigação entra na lista com CDI de oportunidade sem receber benchmark inventado", () => {
+  const { data } = importWorkspace(JSON.stringify(auditFixture()));
+  const exposure = underperformanceExposure(data, data.positions, buildAlerts(data, data.positions));
+  assert.equal(exposure.funds.length, 2);
+  assert.equal(fundReference(data, "F4"), null);
+  assert.equal(benchmarkComparison(data, "F4"), null);
+  assert.equal(cdiComparison(data, "F4").ratio, .06 / .15);
+  assert.equal(cdiComparison(data, "F4", 3), null, "CDI 24M ausente não vira zero");
+  data.market.benchmarks[0].returns[2] = 0;
+  assert.equal(cdiComparison(data, "F4").ratio, null);
+  data.market.benchmarks[0].date = "2026-10-01";
+  assert.equal(cdiComparison(data, "F4"), null);
 });

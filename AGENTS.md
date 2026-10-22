@@ -10,6 +10,8 @@ O usuário recusou demonstrações. Não reintroduzir dados, produtos, retornos,
 
 Contrato em `src/funds/workspace.js`: versões v1/v2, revisões ligadas a conta/fundo, histórico e limite de concentração. Índices exigem vínculo explícito por fundo e períodos equivalentes. Médias históricas ponderadas exibem cobertura por período e não são retorno da carteira/cliente. Cada posição exposta é contada uma vez e filtros preservam o denominador completo da conta.
 
+V3 acrescenta `audit` e `positionPerformance`: retornos e %CDI informados pela XP são preservados por posição e não recalculados com a janela completa do fundo. O campo 24M XP não é anualizado. `Desempenho a investigar` distingue lacuna de benchmark de defasagem contra referência própria. CDI de oportunidade tem identificação explícita. Preservar a serialização v1/v2 para não mudar o caminho do bootstrap e perder acesso ao trabalho salvo. Publicar o leitor v3 antes de gravar v3 no armazenamento privado; qualquer migração deve preservar tarefas atuais usando revisão condicional.
+
 Verificação: `npm test`, `npm run build:public` e `PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/production-smoke.mjs`. O smoke valida autenticação, carregamento automático, persistência e logout usando somente fixtures locais. O offline é validado por `tests/offline-smoke.mjs`; carteira real, sem capturas, por `tests/check-private-site.mjs /caminho/externo/site.html`. Não verificar URLs de publicação com curl/browser quando aplicar a skill de deploy; consultar status da publicação.
 
 ---

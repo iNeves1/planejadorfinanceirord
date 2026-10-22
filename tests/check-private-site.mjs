@@ -63,6 +63,17 @@ try {
   await page.getByLabel("Buscar", { exact: true }).fill(data.positions[0].account);
   await page.getByRole("button", { name: data.positions[0].client, exact: true }).click();
   await page.getByRole("button", { name: "Preparar conversa", exact: true }).waitFor();
+  if (data.audit) {
+    const account = data.positions[0].account, advisor = data.positions[0].advisor;
+    const records = data.positionPerformance.filter((entry) => entry.account === account && entry.advisor === advisor);
+    const xp = page.getByRole("table", { name: "Retornos da posição informados pela XP", exact: true });
+    assert.equal(await xp.locator("tbody tr").count(), data.positions.filter((p) => p.account === account && p.advisor === advisor).length);
+    const text = await xp.innerText();
+    for (const entry of records) {
+      assert.ok(text.includes(percent(entry.year)), "retorno XP da conta preservado");
+      assert.ok(text.includes(percent(entry.yearCdi)), "%CDI informado no relatório preservado");
+    }
+  }
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(JSON.stringify({ passed: true, positions: data.positions.length, accounts: new Set(data.positions.map((p) => p.account)).size, researchedReviews: data.reviews.length, alternativesByOrigin: Object.keys(data.suggestions).length, benchmarkBindings: data.market?.fundReferences.length || 0, externalRequests: external.length }));
