@@ -83,9 +83,9 @@ export function exportWorkspace(data, tasks, limit) {
   return serialized;
 }
 
-export function readInitialWorkspace(fallback) {
+export function readInitialWorkspace() {
   const seed = typeof document !== "undefined" && document.getElementById("rd-private-workspace");
-  if (!seed) return { data: fallback, tasks: [], limit: 0.35 };
+  if (!seed) return null;
   try { return importWorkspace(seed.textContent, "XPerformance · arquivo privado"); }
-  catch (error) { return { data: fallback, tasks: [], limit: 0.35, error: error.message }; }
+  catch { return { error: "Não foi possível abrir a carteira incorporada. O arquivo precisa ser validado antes do uso." }; }
 }

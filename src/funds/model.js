@@ -1,4 +1,3 @@
-import { demoEvents } from "./demo.js";
 export const money = (value) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -78,31 +77,12 @@ export function buildAlerts(data, positions, limit = 0.35) {
         : [],
     );
   });
-  const events =
-    data.mode === "demo"
-      ? demoEvents.flatMap((event) => {
-          const affected = clients.filter((c) =>
-            c.positions.some((p) => p.fundId === event.fundId),
-          );
-          return affected.length
-            ? [
-                {
-                  ...event,
-                  clients: affected,
-                  balance: sum(
-                    positions.filter((p) => p.fundId === event.fundId),
-                  ),
-                },
-              ]
-            : [];
-        })
-      : [];
   const imported = data.mode === "imported" ? (data.reviews || []).flatMap((review) => {
     const affected = clients.filter((c) => c.key === review.clientKey && c.positions.some((p) => p.fundId === review.fundId));
     return affected.length ? [{ ...review, clients: affected, period: dateLabel(review.date),
       balance: sum(positions.filter((p) => `${p.advisor}:${p.clientId}` === review.clientKey && p.fundId === review.fundId)) }] : [];
   }) : [];
-  return [...events, ...imported, ...concentration].sort(
+  return [...imported, ...concentration].sort(
     (a, b) =>
       Number(b.severity === "high") - Number(a.severity === "high") ||
       b.balance - a.balance,

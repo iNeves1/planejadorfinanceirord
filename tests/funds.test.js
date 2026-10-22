@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { demoData } from "../src/funds/demo.js";
 import {
   importPositions,
   parseCsv,
@@ -54,13 +53,14 @@ test("lotes ambíguos, duplicados e inválidos são rejeitados integralmente", (
   assert.throws(() => parseCsv('"sem fechamento'));
 });
 test("filtrar estratégia não transforma concentração parcial em 100% da conta", () => {
-  const selected = demoData.positions.filter((p) => p.fundId === "demo-acoes");
-  const alerts = buildAlerts(demoData, selected, 0.35).filter(
+  const data = importPositions(header + row + "\n" + row.replace("f-1;", "f-2;").replace("1.234,56", "5.000,00"));
+  const selected = data.positions.filter((p) => p.fundId === "f-1");
+  const alerts = buildAlerts(data, selected, 0.35).filter(
     (a) => a.type === "Concentração",
   );
   assert.equal(alerts.length, 0);
   assert.ok(
-    buildAlerts(demoData, demoData.positions, 0.35).some(
+    buildAlerts(data, data.positions, 0.35).some(
       (a) => a.type === "Concentração",
     ),
   );

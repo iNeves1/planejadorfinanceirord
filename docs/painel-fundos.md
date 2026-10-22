@@ -1,52 +1,34 @@
-# Painel de fundos — estado da implementação
+# Painel de fundos — acesso privado e base real
 
-O painel está na rota `/`. O formulário anterior permanece em `/planejamento`.
+## Fluxo implementado
 
-## Executar e validar
+A rota `/` apresenta acesso privado. Uma sessão válida carrega automaticamente o pacote de carteira do servidor; falhas de configuração, autenticação ou dados não acionam uma demonstração. O usuário também pode abrir sua cópia local. O formulário legado fica em `/planejamento`.
 
-Node 24.19.0 e npm 11.9.0 foram usados na validação.
+- Meu dia: revisões explicáveis, exposição sem duplicação, contas prioritárias e tarefas.
+- Carteira de fundos: saldos, alocação, indicador histórico com cobertura por período, índices vinculados e ordenação por saldo/retorno/nome.
+- Clientes: posições completas da conta, pesos, pendências e o quadro “O que revisar nesta conta”, com motivo, fonte e próxima análise.
+- Fundos e Comparador: clientes expostos, exportação por fundo e alternativas condicionais pesquisadas, com identificação, retornos e referência.
+- Acompanhamento: decisões, histórico e próximas revisões; no acesso online com armazenamento privado, salvamento automático e botão explícito de salvar.
 
-```sh
-npm ci --cache /tmp/rd-npm-cache --no-audit --no-fund
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
-npm run build
-node --test tests/funds.test.js
-```
+## Servidor e configuração
 
-O smoke test interativo pode usar Playwright instalado fora do checkout, sem mudar as dependências do produto:
+`server/access.js`, `api/session.js` e `api/workspace.js` atendem um proprietário do workspace. O acesso não é uma solução multiusuário com permissões entre assessores. A sessão assinada por HMAC expira em oito horas e usa cookie Secure, HttpOnly, SameSite=Strict e host exclusivo. Senha verificada com scrypt; escritas exigem origem do próprio site. Respostas da carteira não são cacheáveis. Limite por instância reduz tentativas de login; não substitui uma política central de rate limiting para operação com muitos usuários.
 
-```sh
-npm install --prefix /tmp/rd-browser-tools --cache /tmp/rd-npm-cache --no-audit --no-fund playwright
-PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/browser-smoke.mjs
-```
+Configuração **somente no servidor**, por variáveis secretas do ambiente de produção:
 
-Requer Chromium em `/usr/bin/chromium`. O servidor de desenvolvimento deve estar em execução. Os testes usam somente exemplos sintéticos e uma posição anônima criada pelo próprio teste. Capturas são gravadas em `/tmp/rd-fundos-desktop.png` e `/tmp/rd-fundos-mobile.png`.
+- `RD_LOGIN_SALT`: 16 bytes aleatórios em hexadecimal.
+- `RD_LOGIN_HASH`: scrypt(senha, salt, 64 bytes), hexadecimal.
+- `RD_SESSION_SECRET`: segredo aleatório independente, com ao menos 40 caracteres.
+- `RD_WORKSPACE_GZIP`: pacote validado, comprimido com gzip e codificado em base64. Nunca usar prefixo VITE_.
+- `BLOB_READ_WRITE_TOKEN` ou `BLOB_STORE_ID` com credenciais OIDC: loja Vercel Blob **privada** conectada ao projeto.
 
-## O que funciona
+Nunca registrar esses valores em logs, commits, PRs ou argumentos de comandos. A configuração privada e o bootstrap ficam fora do checkout. O build bloqueia documentos, carteiras incorporadas, configurações do servidor e identificadores conhecidos da demonstração anterior.
 
-- Seis abas: Meu dia, Carteira de fundos, Clientes, Fundos, Comparador e Acompanhamento.
-- Filtros por assessor e estratégia, buscas contextuais e consulta de clientes por fundo.
-- Saldos e alocação por estratégia e gestora; concentração por fundo com limite configurável.
-- Indicadores históricos de mês, ano e 12 meses, ponderados pelos saldos atuais e com cobertura por período. Não representam rentabilidade da carteira ou do investidor.
-- Comparação com índices identificados por fundo, sem presumir CDI. O quadro por referência inclui somente fundos vinculados ao mesmo índice. Fontes do índice e do vínculo ficam disponíveis.
-- Até 25 contas com maior saldo exposto a revisões de prioridade alta, sem duplicação de posições e com denominador completo da conta mesmo ao filtrar estratégia.
-- Ordenação por saldo, retorno 12M ou nome; data/fonte dos retornos e exportação da lista de clientes de um fundo.
-- Exposição a alertas sem duplicar uma posição atingida por mais de uma regra.
-- Navegação fundo → cliente → pauta → registro de decisão e próxima revisão.
-- Histórico de status e decisões, download de resumo, impressão da pauta e exportação CSV.
-- Importação CSV com prévia de totais e confirmação explícita. Um lote substitui a sessão; não há append que duplique posições.
-- Sugestões com identificação, retorno por período e referência. Indicadores técnicos e análises de seleção não integram a interface.
-- Arquivo de trabalho único com posições, prioridades pesquisadas por conta/fundo, alternativas, limite de concentração e histórico completo de atendimento. Salvar e reabrir para continuar depois.
-- HTML independente com CSP sem conexões externas, código e estilos incorporados. Cópias com dados reais são geradas somente fora do checkout.
-- Layout responsivo, navegação por teclado e modais com foco contido e fechamento por Escape.
+`server/workspace-store.js` valida o bootstrap e o conteúdo salvo. O caminho da loja é derivado da revisão do bootstrap. Leituras privadas ignoram cache do provedor; gravações usam comparação de ETag e criação sem sobrescrita. Uma sessão com revisão antiga recebe conflito e mantém seu trabalho para exportação, em vez de sobrescrever silenciosamente a outra sessão. Atualizações de bootstrap geram um novo caminho; a retenção de versões antigas precisa de política operacional.
 
-## Demonstração e dados importados
+Se a loja estiver indisponível, o código informa falha de salvamento e preserva a possibilidade de backup. Não anunciar persistência em nuvem antes de conectar e verificar a loja real. Exclusão, auditoria independente, restauração operacional e permissões por usuário ainda exigem evolução.
 
-A aplicação inicia com dados integralmente sintéticos, identificados no banner e nos cartões. Nomes e CNPJs de produtos reais não foram inventados. As alternativas fictícias aparecem apenas para um fundo fictício de crédito privado; não se repetem para estratégias distintas.
-
-Os cenários demonstrativos de desempenho, queda e mudança no fundo são eventos estáticos explicitamente fictícios. Para um CSV simples, o único alerta calculado é concentração por fundo. Um arquivo de trabalho pode incluir revisões pesquisadas fora do site: desempenho, identificação pendente, liquidez, mudança ou queda. Cada revisão precisa apontar uma posição existente de uma conta, referência igual à carteira e motivo/fonte/próxima análise; o painel não recalcula a pesquisa nem transforma a revisão em ordem de venda. Os filtros preservam o vínculo exato da conta; ter o mesmo fundo não transfere uma revisão a outro cliente. A lista permite carregar mais prioridades além das seis iniciais.
-
-O denominador de concentração é o total importado da conta, mesmo quando a tela é filtrada por estratégia. Saldos de visão consolidada usam o filtro atual. A página individual mostra todos os fundos importados da conta; não transforma o subconjunto em patrimônio total da pessoa.
+## Contratos de importação e backup
 
 CSV deve usar UTF-8, ponto e vírgula e os cabeçalhos:
 
@@ -60,36 +42,19 @@ Contas distintas não são consolidadas por nome. As seis colunas após `liquide
 
 No Comparador ou na página do fundo, “Carregar alternativas” lê um JSON local de até 1 MB. O pacote tem exclusivamente `version: 1`, `date` igual à carteira e `suggestions`, lista de `{currentFundId, alternatives}`. Cada alternativa aceita somente `{id, name, returns, date, sourceUrl}`; `returns` contém quatro frações decimais (0,1453 significa 14,53%), na ordem mês, ano, 12M e 24M a.a.; use `null` para ausência. IDs atuais precisam existir na carteira, alternativas precisam ser distintas do atual e têm limite de três por origem. Campos extras, inclusive análises e indicadores técnicos, são rejeitados. O JSON não contém contas nem clientes. As alternativas são apresentadas como condicionais à revisão do assessor; o pacote não aprova suitability, disponibilidade ou execução. Não há pesquisa automática no navegador.
 
-## Privacidade e limites
 
-Protótipo local, sem autenticação, backend, banco de dados ou autorização entre assessores. Os filtros são filtros, não controles de acesso. Não publicar dados reais em arquivos estáticos e não usar o protótipo como sistema de produção com clientes identificáveis.
+Arquivos de trabalho v1 contêm `format`, `version`, `date`, `positionsCsv`, `curation`, `reviews`, `tasks`, `settings.concentrationLimit`. V2 acrescenta `market: {date, benchmarks, fundReferences}`. Índices têm `{id, name, returns, date, sourceUrl}`; vínculos `{fundId, benchmarkId, sourceUrl}`. Datas precisam coincidir, IDs devem existir, duplicatas e campos extras são recusados. Backups preservam a versão e o histórico. Um CSV isolado não preserva índices, pesquisa e decisões.
 
-Importações e alterações permanecem somente na memória desta aba. “Salvar trabalho” exporta um `.rdfundos` com posições, alternativas, revisões e histórico de decisões. Ao reabrir o arquivo, dados e acompanhamentos são restaurados após a prévia. No HTML preenchido, recarregar volta à fotografia incorporada, e alterações posteriores precisam desse backup. Não há envio automático a servidor, localStorage, telemetria ou integração com custódia no painel. O formulário legado mantém sua integração Web3Forms, separada do painel e inacessível como rota na cópia HTML independente.
+## Cálculos e pesquisa
 
-O contrato de trabalho tem `format: "rd-fundos-workspace"`, `version: 1`, `date`, `positionsCsv`, `curation` (formato de alternativas acima), `reviews`, `tasks` e `settings.concentrationLimit`. Implementação e limites em `src/funds/workspace.js`. Campos extras são rejeitados; títulos e motivos são texto escapado pelo React. Históricos precisam estar em ordem e concordar com o status final. O importador verifica a existência da relação conta/fundo de cada registro. A validação estrutural não certifica as conclusões financeiras. O pacote não é criptografado; mantenha-o privado.
+Pesos e concentrações usam somente o universo de fundos importado, mantendo todas as posições da conta no denominador ao filtrar estratégia. Contas distintas não são unificadas por nome. Exposições contam cada posição uma vez. O indicador histórico divide soma(saldo atual × retorno do fundo) pelo saldo com retorno disponível no período e informa sua cobertura. Não é rentabilidade da carteira ou do investidor. Ausências não viram zero.
 
-Antes de uso operacional: implementar autenticação, autorização no servidor, banco privado, auditoria confiável, política de retenção e restauração de backup; integrar posições e métricas com rastreabilidade. A análise de movimentações, tributação, liquidez por objetivo, correlação e sobreposição está pendente das respectivas bases.
+Benchmark exige vínculo explícito e fonte por fundo. Só comparar períodos equivalentes. Índice com retorno zero ou negativo não gera razão de retornos. Não descontar taxas novamente, emendar subclasses ou extrapolar ganho futuro sobre saldos atuais. Quartis exigem universo de pares definido e fonte antes de serem apresentados.
 
-## Índices e cobertura — arquivo de trabalho v2
+Mais Retorno, CVM, BACEN e documentos do veículo apoiam a pesquisa externa. O código não inventa liquidez, CNPJ, disponibilidade XP, adequação ao cliente ou alternativas. A pesquisa técnica não integra o frontend. O assessor assumiu conferir perfil, objetivos e restrições. Movimentações completas são necessárias para TWR/MWR e cálculo tributário individual.
 
-A versão 2 mantém os campos da v1 e exige `market: {date, benchmarks, fundReferences}`. Cada índice contém exatamente `{id, name, returns, date, sourceUrl}`, com quatro retornos fracionários (mês, ano, 12M, 24M a.a.; ausências = `null`). Cada vínculo contém exatamente `{fundId, benchmarkId, sourceUrl}`; a fonte do vínculo identifica a referência do veículo. Datas devem coincidir com a carteira, identificadores devem existir, duplicatas e campos técnicos são recusados. As fontes de índice/vínculo aceitas são HTTPS do BACEN, CVM, Mais Retorno, XP Asset e ANBIMA, com host exato, sem credenciais na URL. Isso valida estrutura e proveniência declarada, não certifica o conteúdo financeiro. Arquivos v1 continuam aceitos. O backup mantém a versão 2 quando há índices; um CSV sozinho não preserva índices, revisões ou decisões.
+## Verificação
 
-O indicador ponderado divide a soma `saldo × retorno` pelo saldo apenas dos fundos com retorno disponível na mesma referência. A cobertura divide esse saldo coberto pelo saldo total da seleção, separadamente em cada período. Na comparação por índice, o universo e sua cobertura restringem-se aos fundos explicitamente vinculados a ele. A razão fundo/índice fica ausente quando o retorno do índice é zero ou negativo, ou falta qualquer retorno comparável. Não preencher lacunas com zero, emendar subclasses ou produzir ganho futuro em reais a partir dessa fotografia.
+`npm test` inclui importação, cobertura, índices, revisões por conta, autenticação, origem, limites de corpo, expiração, persistência e conflitos. `npm run build:public` confere a saída. Execute `PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/production-smoke.mjs` para login, carteira automática, salvamento/restauração/logout, ausência de fallback, exportações, comparador e mobile sob headers Vercel. O teste usa exclusivamente fixtures anônimas e uma loja em memória; não certifica a configuração da loja real.
 
-Validação adicional: `npm test` inclui cobertura parcial, retornos negativos, datas divergentes, ausência de vínculo, índice não positivo, restauração v1/v2 e ranking com denominador completo da conta. `tests/production-smoke.mjs` verifica indicadores, ranking, CSV por fundo e backup v2 sob os headers Vercel, sem rede externa e sem overflow no celular. O formulário legado permanece separado.
-
-## Fonte de pesquisa e sugestões
-
-### Pendências para operação compartilhada
-
-Autenticação e autorização no servidor, armazenamento privado, auditoria e restauração confiável ainda não estão implementados. A atualização de posições, pesquisa e índices continua sendo uma carga explícita por arquivo, sem atualização automática no navegador. Identidades sem documentação suficiente, bases históricas não confirmadas e disponibilidade do veículo no distribuidor permanecem pendências de pesquisa; não são preenchidas por aproximação. Quartis exigem universo comparável e fonte definidos antes da implementação. Movimentações completas são necessárias para rentabilidade do investidor e simulação tributária. Esses pontos não são resolvidos pela publicação da interface no Vercel.
-
-Mais Retorno é a fonte solicitada para a análise e seleção de fundos. A pesquisa completa deve ficar fora da interface e do bundle público. Acesso HTTP às páginas públicas do comparador e de um fundo foi confirmado em 21/10/2026; isso não valida todas as métricas ou acesso às funcionalidades dinâmicas/contratadas. Nenhuma API privada foi presumida.
-
-Uma recomendação real depende de identificar o fundo atual fora da previdência, conferir classe/subclasse e documentação, analisar composição e mandato, comparar risco e retorno em janelas equivalentes, verificar liquidez/perfil/plataforma e registrar a revisão. Não usar uma lista genérica dos “mais rentáveis”. Não traduzir retorno histórico em promessa de ganho sobre o saldo atual. A curadoria é produzida fora do site e pode ser carregada localmente no formato limitado acima. Arquivos de posições, documentos privados, scripts de pesquisa e planilhas com análises permanecem fora do checkout e do build.
-
-## Resultado da validação desta entrega
-
-Build de produção concluído; oito testes de regras/importação passaram, incluindo preservação de retorno negativo, rejeição de fonte/data incompatíveis e isolamento do pacote de alternativas. O smoke em Chromium passou pelas seis abas, prioridade → tarefa → decisão → histórico, downloads de CSV/resumo, filtro de concentração com denominador preservado, viewport de 390 px sem overflow horizontal, importação anônima com conferência de centavos, carregamento de alternativa anônima e descarte no reload, além do acesso ao formulário legado. Os cartões não contêm Sharpe, volatilidade, correlação, quartil, taxa de administração ou projeção de ganho. Isso valida o protótipo; não valida recomendações reais ou controles de produção ainda não implementados.
-
-Validação do arquivo único: `npm test` executa 11 testes, incluindo isolamento de revisões por conta, restauração de decisões e rejeição de dados inconsistentes. Após `npm run build:offline`, execute `PLAYWRIGHT_MODULE=/tmp/rd-browser-tools/node_modules/playwright/index.mjs node tests/offline-smoke.mjs`. O teste abre o HTML independente por loopback (o Chromium gerenciado deste ambiente bloqueia `file:`), desliga a rede durante as interações, cria decisão, salva/reabre backup, verifica CSP sem solicitações externas, escape do seed e layout móvel sem overflow. Nenhuma credencial ou dado real é usado nas fixtures. `tests/check-private-site.mjs /caminho/privado/site.html` é uma conferência opcional, somente leitura, sem capturas nem impressão de dados individuais, para comparar a cópia privada com o pacote incorporado.
+`tests/offline-smoke.mjs` verifica HTML preenchido, backup/restauração, escape do seed e ausência de conexões. `tests/check-private-site.mjs /caminho/externo/site.html` confere carteira real sem capturas ou dados individuais no resultado. O gerador offline exige `--workspace` e `--output` fora do checkout. A cópia local usa CSP sem conexões; o acesso online permite somente conexões ao próprio site.

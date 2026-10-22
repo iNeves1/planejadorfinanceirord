@@ -19,6 +19,20 @@
   display: flex;
   letter-spacing: -0.01em;
 }
+.funds-app.fd-access { min-height: 100vh; align-items: center; justify-content: center; padding: 28px 16px; }
+.fd-access-content { width: 100%; max-width: 500px; }
+.fd-access-brand { color: #254b38; font-size: 36px; font-weight: 750; letter-spacing: -2px; margin-bottom: 30px; }
+.fd-access-brand span { font-size: 12px; letter-spacing: 2px; margin-left: 15px; }
+.fd-access-body { padding: 0 22px 24px; }
+.fd-access-body > svg { color: #21876c; margin-bottom: 15px; }
+.fd-access-body form { display: grid; gap: 14px; }
+.fd-access-body p { line-height: 1.7; }
+.fd-access-note { color: #63776a; font-size: 12px; margin-top: 24px; }
+.fd-access-body details { border-top: 1px solid #e0e8e2; padding-top: 18px; font-size: 12px; }
+.fd-access-body summary { cursor: pointer; margin-bottom: 14px; }
+.fd-account-review { padding: 18px 22px; border-top: 1px solid #e0e8e2; }
+.fd-account-review h3 { margin-top: 12px; }
+.fd-account-review .fd-caption { padding: 0 0 14px; overflow-wrap: anywhere; }
 .funds-app * {
   box-sizing: border-box;
 }
@@ -343,7 +357,7 @@
   margin: auto;
   padding: 24px 36px 0;
 }
-.fd-demo-banner {
+.fd-base-banner {
   padding: 10px 14px;
   background: #eff4ec;
   border: 1px solid #e1e9d9;
@@ -356,12 +370,12 @@
   gap: 10px;
   margin-bottom: 31px;
 }
-.fd-demo-banner > span {
+.fd-base-banner > span {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
 }
-.fd-demo-banner b {
+.fd-base-banner b {
   font-weight: 650;
 }
 .fd-pulse {
@@ -372,7 +386,7 @@
   background: #7e9b62;
   margin-right: 8px;
 }
-.fd-demo-banner button {
+.fd-base-banner button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1760,7 +1774,7 @@
     font-size: 9px;
     gap: 6px;
   }
-  .fd-demo-banner {
+  .fd-base-banner {
     margin-bottom: 25px;
     padding: 9px 10px;
   }
@@ -1906,16 +1920,16 @@
     font-size: 10px;
     max-width: 260px;
   }
-  .fd-demo-banner {
+  .fd-base-banner {
     font-size: 9px;
     gap: 4px;
     padding: 8px;
   }
-  .fd-demo-banner button {
+  .fd-base-banner button {
     font-size: 8px;
     gap: 2px;
   }
-  .fd-demo-banner button svg {
+  .fd-base-banner button svg {
     width: 11px;
   }
   .fd-page-actions {
@@ -2143,7 +2157,7 @@
   .fd-toast,
   .fd-modal-heading,
   .fd-modal-bottom,
-  .fd-demo-banner {
+  .fd-base-banner {
     display: none !important;
   }
   .fd-modal-overlay {
@@ -2290,7 +2304,7 @@
   font-size: 11px;
   color: #7f906f;
 }
-.fd-demo-banner {
+.fd-base-banner {
   color: #6e7f57;
 }
 .fd-return-grid span {

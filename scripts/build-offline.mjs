@@ -7,6 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const option = (flag) => args.includes(flag) ? args[args.indexOf(flag) + 1] : null;
 const workspace = option("--workspace");
+if (!workspace) throw new Error("Informe --workspace com a carteira validada e --output fora do checkout. Não há base de demonstração.");
 const output = path.resolve(option("--output") || path.join(root, "dist/rd-fundos.html"));
 const insideCheckout = (name) => name === root || name.startsWith(root + path.sep);
 if (workspace && insideCheckout(output)) throw new Error("O HTML com dados reais deve ficar fora do checkout e de dist/public.");
@@ -34,4 +35,4 @@ const html = `<!doctype html>
 await mkdir(path.dirname(output), { recursive: true });
 await writeFile(output, html, { mode: workspace ? 0o600 : 0o644 });
 if (workspace) await chmod(output, 0o600);
-console.log(`HTML independente gerado: ${output}${workspace ? " (arquivo privado; não publicar)" : " (demonstração)"}`);
+console.log(`HTML independente gerado: ${output} (arquivo privado; não publicar)`);
