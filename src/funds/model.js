@@ -119,6 +119,17 @@ export function exposedBalance(positions, alerts) {
     ),
   );
 }
+export function priorityClients(data, positions, alerts) {
+  return groupClients(positions).map((client) => {
+    const applicable = alerts.filter((alert) => alert.severity === "high" &&
+      (!alert.clientKey || alert.clientKey === client.key));
+    const affected = client.positions.filter((position) => applicable.some((alert) => alert.fundId === position.fundId));
+    const exposure = sum(affected);
+    const accountBalance = sum(data.positions.filter((position) => `${position.advisor}:${position.clientId}` === client.key));
+    return { ...client, exposure, accountBalance, weight: accountBalance > 0 ? exposure / accountBalance : null,
+      fundIds: [...new Set(affected.map((position) => position.fundId))] };
+  }).filter((client) => client.exposure > 0).sort((a, b) => b.exposure - a.exposure || a.key.localeCompare(b.key));
+}
 export function allocation(positions, funds, field = "strategy") {
   const total = sum(positions),
     groups = new Map();

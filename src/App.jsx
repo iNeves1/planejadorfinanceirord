@@ -43,6 +43,7 @@ import {
   groupClients,
   buildAlerts,
   exposedBalance,
+  priorityClients,
   allocation,
   importPositions,
   importSuggestions,
@@ -52,6 +53,8 @@ import {
 } from "./funds/model.js";
 import "./funds/funds.css";
 import { importWorkspace, exportWorkspace, readInitialWorkspace } from "./funds/workspace.js";
+import Performance from "./funds/Performance.jsx";
+import { benchmarkComparison, fundReference } from "./funds/performance.js";
 
 const navigation = [
   ["day", "Meu dia", LayoutDashboard],
@@ -240,6 +243,7 @@ function FundsDashboard() {
   const [notice, setNotice] = useState("");
   const [followStatus, setFollowStatus] = useState("Todos");
   const [alertCount, setAlertCount] = useState(6);
+  const [fundSort, setFundSort] = useState("balance");
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const demo = data.mode === "demo";
@@ -280,11 +284,19 @@ function FundsDashboard() {
       ),
   );
   const total = sum(positions);
+  const attentionClients = priorityClients(data, positions, allAlerts).filter((client) =>
+    textMatch(`${client.name} ${client.id} ${client.fundIds.map((id) => funds.find((fund) => fund.id === id)?.name).join(" ")}`, query));
   const visibleFunds = funds.filter(
     (f) =>
       positions.some((p) => p.fundId === f.id) &&
       textMatch(`${f.name} ${f.manager} ${f.strategy}`, query),
-  );
+  ).sort((a, b) => {
+    if (fundSort === "name") return a.name.localeCompare(b.name, "pt-BR");
+    const value = (fund) => fundSort === "return12"
+      ? (Number.isFinite(fund.returns[2]) ? fund.returns[2] : -Infinity)
+      : sum(positions.filter((position) => position.fundId === fund.id));
+    return value(b) - value(a) || a.name.localeCompare(b.name, "pt-BR");
+  });
   const selectedFund = funds.find((f) => f.id === fundId) || visibleFunds[0];
   const activeClient = groupClients(
     data.positions.filter((p) => advisor === "all" || p.advisor === advisor),
@@ -490,6 +502,8 @@ function FundsDashboard() {
             <th>Mês</th>
             <th>Ano</th>
             <th>12 meses</th>
+            <th>Referência · 12M</th>
+            <th>% da referência · 12M</th>
             <th>Revisões</th>
             <th>
               <span className="sr-only">Abrir fundo</span>
@@ -500,6 +514,7 @@ function FundsDashboard() {
           {visibleFunds.map((f) => {
             const balance = sum(positions.filter((p) => p.fundId === f.id)),
               count = allAlerts.filter((a) => a.fundId === f.id).length;
+            const reference = fundReference(data, f.id), comparison = benchmarkComparison(data, f.id);
             return (
               <tr key={f.id}>
                 <td>
@@ -512,6 +527,7 @@ function FundsDashboard() {
                   <small>
                     {f.strategy} · {f.manager}
                   </small>
+                  <small>{f.date ? `Cota: ${dateLabel(f.date)}` : "Sem retorno confirmado"}{!demo && f.sourceUrl && <> · <a href={f.sourceUrl} target="_blank" rel="noreferrer">Fonte dos retornos</a></>}</small>
                 </td>
                 <td className="fd-nowrap">{money(balance)}</td>
                 <td>{percent(total ? balance / total : 0)}</td>
@@ -520,6 +536,8 @@ function FundsDashboard() {
                     {percent(f.returns[i])}
                   </td>
                 ))}
+                <td>{reference ? <><a href={reference.sourceUrl} target="_blank" rel="noreferrer">{reference.benchmark.name}</a><small>{percent(reference.benchmark.returns[2])}</small></> : "Não confirmada"}</td>
+                <td>{percent(comparison?.ratio)}<small>{comparison?.ratio != null ? "Razão dos retornos históricos" : "Sem dados comparáveis"}</small></td>
                 <td>
                   <Badge tone={count ? "amber" : "neutral"}>
                     {count
@@ -1021,6 +1039,18 @@ function FundsDashboard() {
                   </div>
                 </div>
               </div>
+              <Panel title="Contas com maior exposição a revisões prioritárias" eyebrow="PREPARAÇÃO DAS CONVERSAS"
+                action={<Badge>{attentionClients.length} contas</Badge>}>
+                {attentionClients.length > 0 ? <div className="fd-table-wrap"><table>
+                  <thead><tr><th>Cliente / conta</th><th>Saldo em revisão</th><th>Total em fundos da conta</th><th>% dos fundos da conta</th><th>Fundos para revisar</th></tr></thead>
+                  <tbody>{attentionClients.slice(0, 25).map((client) => <tr key={client.key}>
+                    <td><button className="fd-table-link" onClick={() => { go("clients"); setClientKey(client.key); }}>{client.name}</button><small>{client.id} · {client.advisor}</small></td>
+                    <td>{money(client.exposure)}</td><td>{money(client.accountBalance)}</td><td>{percent(client.weight)}</td>
+                    <td>{client.fundIds.map((id) => <button key={id} className="fd-table-link fd-priority-fund" onClick={() => openFund(id)}>{funds.find((fund) => fund.id === id)?.name}</button>)}</td>
+                  </tr>)}</tbody>
+                </table></div> : <Empty title="Sem revisões de prioridade alta nesta seleção">Alertas de prioridade média e concentrações continuam disponíveis na central.</Empty>}
+                <p className="fd-panel-note">Até 25 contas, ordenadas pelo saldo exposto a alertas de prioridade alta. Cada posição é contada uma vez. O percentual usa todos os fundos importados da conta, mesmo com filtro de estratégia. Esta lista orienta a revisão, sem determinar uma venda.</p>
+              </Panel>
             </>
           )}
 
@@ -1064,10 +1094,13 @@ function FundsDashboard() {
                   />
                 </Panel>
               </div>
+              <Performance data={data} positions={positions} />
               <Panel
                 title="Posições por fundo"
                 eyebrow="CARTEIRA CONSOLIDADA"
-                action={<Badge>{visibleFunds.length} fundos</Badge>}
+                action={<Field label="Ordenar fundos"><select value={fundSort} onChange={(event) => setFundSort(event.target.value)}>
+                  <option value="balance">Maior saldo</option><option value="return12">Maior retorno em 12M</option><option value="name">Nome do fundo</option>
+                </select></Field>}
               >
                 {fundTable}
                 <p className="fd-panel-note">
@@ -1324,12 +1357,15 @@ function FundsDashboard() {
                         </div>
                       </div>
                       <div className="fd-section-label">CLIENTES EXPOSTOS</div>
+                      <Button variant="secondary" icon={Download} onClick={() => download("clientes_do_fundo.csv", positionCsv(data, currentFundPositions))}>Exportar clientes deste fundo</Button>
                       <div className="fd-table-wrap">
                         <table>
                           <thead>
                             <tr>
                               <th>Cliente / conta</th>
                               <th>Saldo no fundo</th>
+                              <th>% do saldo do fundo no filtro</th>
+                              <th>Total em fundos da conta</th>
                               <th>% dos fundos da conta</th>
                               <th />
                             </tr>
@@ -1360,6 +1396,8 @@ function FundsDashboard() {
                                       </small>
                                     </td>
                                     <td>{money(c.balance)}</td>
+                                    <td>{percent(sum(currentFundPositions) > 0 ? c.balance / sum(currentFundPositions) : null)}</td>
+                                    <td>{money(accountBalance(c.key))}</td>
                                     <td>
                                       {percent(
                                         accountBalance(c.key)
@@ -1910,6 +1948,15 @@ function FundsDashboard() {
               nem o pacote público.
             </p>
             <h3>Cobertura e limitações</h3>
+            <p>
+              Os indicadores consolidados são médias dos retornos dos fundos ponderadas
+              pelos saldos da fotografia. Cada período exclui retornos ausentes e mostra
+              sua cobertura em saldo. Não são rentabilidade da carteira nem do investidor.
+              Benchmarks exigem vínculo explícito por fundo e períodos equivalentes;
+              CDI não é atribuído automaticamente. A razão entre retornos só aparece
+              quando o retorno do índice é positivo; referência zero ou negativa permanece
+              disponível sem produzir essa razão.
+            </p>
             <p>
               Pesos são calculados sobre os fundos disponíveis no universo
               indicado. Alertas são triagem. Não há cálculo de rentabilidade

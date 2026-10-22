@@ -1,4 +1,5 @@
 import { importPositions, importSuggestions, positionCsv } from "./model.js";
+import { importMarket } from "./performance.js";
 
 const statuses = ["Em análise", "Conversado", "Aguardando cliente", "Concluído"];
 const keysAre = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
@@ -11,8 +12,10 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
   if (typeof content !== "string" || content.length > 10 * 1024 * 1024)
     throw new Error("O arquivo de trabalho deve ter até 10 MB.");
   const input = JSON.parse(content);
-  if (!keysAre(input, ["format", "version", "date", "positionsCsv", "curation", "reviews", "tasks", "settings"]) ||
-      input.format !== "rd-fundos-workspace" || input.version !== 1 || !validDate(input.date) ||
+  const fields = ["format", "version", "date", "positionsCsv", "curation", "reviews", "tasks", "settings"];
+  if (input?.version === 2) fields.push("market");
+  if (!keysAre(input, fields) ||
+      input.format !== "rd-fundos-workspace" || ![1, 2].includes(input.version) || !validDate(input.date) ||
       !text(input.positionsCsv, 5 * 1024 * 1024) || !Array.isArray(input.reviews) || input.reviews.length > 20000 ||
       !Array.isArray(input.tasks) || input.tasks.length > 5000 ||
       !keysAre(input.settings, ["concentrationLimit"]) ||
@@ -21,6 +24,7 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
     throw new Error("Arquivo de trabalho inválido. Use o pacote RD Fundos ou um backup exportado pelo painel.");
   const data = importPositions(input.positionsCsv, filename);
   if (data.date !== input.date) throw new Error("A referência do pacote difere das posições.");
+  if (input.version === 2) data.market = importMarket(input.market, data);
   data.suggestions = importSuggestions(JSON.stringify(input.curation), data);
   data.workspace = true;
   const reviewIds = new Set();
@@ -65,13 +69,14 @@ export function importWorkspace(content, filename = "Arquivo de trabalho") {
 export function exportWorkspace(data, tasks, limit) {
   if (data.mode !== "imported") throw new Error("Carregue uma carteira para salvar um arquivo de trabalho.");
   const bundle = {
-    format: "rd-fundos-workspace", version: 1, date: data.date,
+    format: "rd-fundos-workspace", version: data.market ? 2 : 1, date: data.date,
     positionsCsv: positionCsv(data, data.positions),
     curation: { version: 1, date: data.date, suggestions: Object.entries(data.suggestions || {}).map(([currentFundId, alternatives]) => ({ currentFundId, alternatives })) },
     reviews: (data.reviews || []).map(({ account, fundId, type, severity, title, reason, next, source, date }) => ({ account, fundId, type, severity, title, reason, next, source, date })),
     tasks: tasks.map(({ id, title, notes, clientKey, fundId, owner, due, status, history }) => ({ id, title, notes, clientKey, fundId, owner, due, status, history })),
     settings: { concentrationLimit: limit },
   };
+  if (data.market) bundle.market = data.market;
   const serialized = JSON.stringify(bundle);
   // Garante que um backup gerado também pode ser restaurado pelo mesmo contrato.
   importWorkspace(serialized);

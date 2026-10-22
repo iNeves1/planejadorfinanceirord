@@ -10,6 +10,8 @@ Arquivo único de trabalho: `src/funds/workspace.js` importa/exporta posições,
 
 ---
 
+Atualização dos indicadores: arquivos de trabalho v2 incluem `market` (índices e vínculo explícito por fundo) e mantêm compatibilidade com v1. Regras e contrato em `src/funds/performance.js`. Médias históricas ponderadas sempre mostram cobertura por período; nunca apresentá-las como rentabilidade da carteira/cliente. CDI não é atribuído automaticamente. Índice zero/negativo não gera razão de retornos. As 25 maiores exposições de prioridade alta usam todas as posições da conta como denominador e contam cada posição uma vez. Pesquisa técnica continua privada.
+
 # AGENTS.md
 
 ## What this is

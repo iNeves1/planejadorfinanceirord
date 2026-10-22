@@ -8,3 +8,20 @@ export function fixture() {
     settings: { concentrationLimit: 0.4 },
   };
 }
+
+export function marketFixture() {
+  const bundle = fixture();
+  bundle.version = 2;
+  const rows = bundle.positionsCsv.split("\n");
+  rows[0] += ";liquidez;ret_mes_pct;ret_ano_pct;ret_12m_pct;ret_24m_aa_pct;data_cota;fonte_url";
+  for (let i = 1; i < rows.length; i++) rows[i] += ";;1;8;12;;2026-09-30;https://maisretorno.com/fundo/exemplo";
+  rows.push("A3;Conta de teste 3;IN;F3;Fundo sem retorno;Inflação;Gestora fictícia;1000,00;2026-09-30;;;;;;;");
+  bundle.positionsCsv = rows.join("\n");
+  bundle.market = {
+    date: bundle.date,
+    benchmarks: [{ id: "CDI", name: "CDI", returns: [0.01, 0.1, 0.15, null], date: bundle.date,
+      sourceUrl: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json" }],
+    fundReferences: [{ fundId: "F1", benchmarkId: "CDI", sourceUrl: "https://maisretorno.com/fundo/exemplo" }],
+  };
+  return bundle;
+}

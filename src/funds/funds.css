@@ -1032,6 +1032,7 @@
 }
 .fd-table-wrap {
   overflow: auto;
+  position: relative;
 }
 .funds-app table {
   width: 100%;
@@ -2404,6 +2405,27 @@
 .fd-day-side,
 .fd-fund-layout > div {
   min-width: 0;
+}
+.funds-app .fd-performance-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 22px 20px;
+}
+.funds-app .fd-performance-summary > div {
+  padding: 15px;
+  border: 1px solid #e0e8e2;
+  border-radius: 8px;
+}
+.funds-app .fd-performance-summary span,
+.funds-app .fd-performance-summary strong,
+.funds-app .fd-performance-summary small { display: block; }
+.funds-app .fd-performance-summary span { font-size: 12px; color: #617365; }
+.funds-app .fd-performance-summary strong { font-size: 23px; margin: 8px 0; color: #235b43; }
+.funds-app .fd-performance-summary small { font-size: 11px; color: #617365; line-height: 1.5; }
+.funds-app .fd-priority-fund { display: block; margin: 5px 0; text-align: left; }
+@media (max-width: 600px) {
+  .funds-app .fd-performance-summary { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
   .fd-day-layout {

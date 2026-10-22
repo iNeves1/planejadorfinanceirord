@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { importWorkspace } from "../src/funds/workspace.js";
 import { compact, sum, percent } from "../src/funds/model.js";
+import { weightedPerformance } from "../src/funds/performance.js";
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 if (!process.argv[2]) throw new Error("Informe o caminho externo do HTML privado a validar.");
 const html = await readFile(process.argv[2], "utf8");
@@ -26,6 +27,16 @@ try {
   await page.getByRole("button", { name: "Desempenho", exact: true }).click();
   while (await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).count()) await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).click();
   assert.equal(await page.locator(".fd-alert").count(), data.reviews.filter((r) => r.type === "Desempenho").length);
+  await page.getByRole("navigation").getByRole("button", { name: "Carteira de fundos", exact: true }).click();
+  const metric = weightedPerformance(data, data.positions);
+  const performance = await page.locator(".fd-performance-summary").innerText();
+  assert.ok(performance.includes(percent(metric.value)));
+  assert.ok(performance.includes(percent(metric.coverage)));
+  if (data.market) {
+    const captions = await page.getByRole("table").nth(1).innerText();
+    for (const benchmark of data.market.benchmarks.filter((index) => data.market.fundReferences.some((reference) => reference.benchmarkId === index.id)))
+      assert.ok(captions.includes(benchmark.name));
+  }
   await page.getByRole("navigation").getByRole("button", { name: "Comparador", exact: true }).click();
   for (const [id, alternatives] of Object.entries(data.suggestions)) {
     await page.getByLabel("Fundo", { exact: true }).selectOption(id);
@@ -41,5 +52,5 @@ try {
   await page.getByRole("button", { name: "Preparar conversa", exact: true }).waitFor();
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
-  console.log(JSON.stringify({ passed: true, positions: data.positions.length, accounts: new Set(data.positions.map((p) => p.account)).size, researchedReviews: data.reviews.length, alternativesByOrigin: Object.keys(data.suggestions).length, externalRequests: external.length }));
+  console.log(JSON.stringify({ passed: true, positions: data.positions.length, accounts: new Set(data.positions.map((p) => p.account)).size, researchedReviews: data.reviews.length, alternativesByOrigin: Object.keys(data.suggestions).length, benchmarkBindings: data.market?.fundReferences.length || 0, externalRequests: external.length }));
 } finally { await browser.close(); server.close(); }

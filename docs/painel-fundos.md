@@ -27,6 +27,10 @@ Requer Chromium em `/usr/bin/chromium`. O servidor de desenvolvimento deve estar
 - Seis abas: Meu dia, Carteira de fundos, Clientes, Fundos, Comparador e Acompanhamento.
 - Filtros por assessor e estratégia, buscas contextuais e consulta de clientes por fundo.
 - Saldos e alocação por estratégia e gestora; concentração por fundo com limite configurável.
+- Indicadores históricos de mês, ano e 12 meses, ponderados pelos saldos atuais e com cobertura por período. Não representam rentabilidade da carteira ou do investidor.
+- Comparação com índices identificados por fundo, sem presumir CDI. O quadro por referência inclui somente fundos vinculados ao mesmo índice. Fontes do índice e do vínculo ficam disponíveis.
+- Até 25 contas com maior saldo exposto a revisões de prioridade alta, sem duplicação de posições e com denominador completo da conta mesmo ao filtrar estratégia.
+- Ordenação por saldo, retorno 12M ou nome; data/fonte dos retornos e exportação da lista de clientes de um fundo.
 - Exposição a alertas sem duplicar uma posição atingida por mais de uma regra.
 - Navegação fundo → cliente → pauta → registro de decisão e próxima revisão.
 - Histórico de status e decisões, download de resumo, impressão da pauta e exportação CSV.
@@ -66,7 +70,19 @@ O contrato de trabalho tem `format: "rd-fundos-workspace"`, `version: 1`, `date`
 
 Antes de uso operacional: implementar autenticação, autorização no servidor, banco privado, auditoria confiável, política de retenção e restauração de backup; integrar posições e métricas com rastreabilidade. A análise de movimentações, tributação, liquidez por objetivo, correlação e sobreposição está pendente das respectivas bases.
 
+## Índices e cobertura — arquivo de trabalho v2
+
+A versão 2 mantém os campos da v1 e exige `market: {date, benchmarks, fundReferences}`. Cada índice contém exatamente `{id, name, returns, date, sourceUrl}`, com quatro retornos fracionários (mês, ano, 12M, 24M a.a.; ausências = `null`). Cada vínculo contém exatamente `{fundId, benchmarkId, sourceUrl}`; a fonte do vínculo identifica a referência do veículo. Datas devem coincidir com a carteira, identificadores devem existir, duplicatas e campos técnicos são recusados. As fontes de índice/vínculo aceitas são HTTPS do BACEN, CVM, Mais Retorno, XP Asset e ANBIMA, com host exato, sem credenciais na URL. Isso valida estrutura e proveniência declarada, não certifica o conteúdo financeiro. Arquivos v1 continuam aceitos. O backup mantém a versão 2 quando há índices; um CSV sozinho não preserva índices, revisões ou decisões.
+
+O indicador ponderado divide a soma `saldo × retorno` pelo saldo apenas dos fundos com retorno disponível na mesma referência. A cobertura divide esse saldo coberto pelo saldo total da seleção, separadamente em cada período. Na comparação por índice, o universo e sua cobertura restringem-se aos fundos explicitamente vinculados a ele. A razão fundo/índice fica ausente quando o retorno do índice é zero ou negativo, ou falta qualquer retorno comparável. Não preencher lacunas com zero, emendar subclasses ou produzir ganho futuro em reais a partir dessa fotografia.
+
+Validação adicional: `npm test` inclui cobertura parcial, retornos negativos, datas divergentes, ausência de vínculo, índice não positivo, restauração v1/v2 e ranking com denominador completo da conta. `tests/production-smoke.mjs` verifica indicadores, ranking, CSV por fundo e backup v2 sob os headers Vercel, sem rede externa e sem overflow no celular. O formulário legado permanece separado.
+
 ## Fonte de pesquisa e sugestões
+
+### Pendências para operação compartilhada
+
+Autenticação e autorização no servidor, armazenamento privado, auditoria e restauração confiável ainda não estão implementados. A atualização de posições, pesquisa e índices continua sendo uma carga explícita por arquivo, sem atualização automática no navegador. Identidades sem documentação suficiente, bases históricas não confirmadas e disponibilidade do veículo no distribuidor permanecem pendências de pesquisa; não são preenchidas por aproximação. Quartis exigem universo comparável e fonte definidos antes da implementação. Movimentações completas são necessárias para rentabilidade do investidor e simulação tributária. Esses pontos não são resolvidos pela publicação da interface no Vercel.
 
 Mais Retorno é a fonte solicitada para a análise e seleção de fundos. A pesquisa completa deve ficar fora da interface e do bundle público. Acesso HTTP às páginas públicas do comparador e de um fundo foi confirmado em 21/10/2026; isso não valida todas as métricas ou acesso às funcionalidades dinâmicas/contratadas. Nenhuma API privada foi presumida.
 
