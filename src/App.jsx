@@ -54,9 +54,10 @@ import Performance from "./funds/Performance.jsx";
 import Underperformance from "./funds/Underperformance.jsx";
 import PrivateAccess from "./funds/PrivateAccess.jsx";
 import { usePrivateSave } from "./funds/usePrivateSave.js";
-import { benchmarkComparison, fundReference, relocationAlternatives, percentagePoints } from "./funds/performance.js";
+import { cdiComparison, fundReference, relocationAlternatives } from "./funds/performance.js";
 import ComparisonGuide from "./funds/ComparisonGuide.jsx";
 import PositionPerformance from "./funds/PositionPerformance.jsx";
+import FundPerformanceTable from "./funds/FundPerformanceTable.jsx";
 
 const navigation = [
   ["day", "Resumo", LayoutDashboard],
@@ -242,6 +243,8 @@ export function FundsDashboard({ initial, onLogout }) {
   const [limit, setLimit] = useState(initial.limit);
   const [fundId, setFundId] = useState(initial.data.funds[0]?.id);
   const [clientKey, setClientKey] = useState(null);
+  const [clientQuery, setClientQuery] = useState("");
+  const [focusedClientKey, setFocusedClientKey] = useState(null);
   const [tasks, setTasks] = useState(initial.tasks);
   const [modal, setModal] = useState(initial.error ? "import" : null);
   const [taskSeed, setTaskSeed] = useState(null);
@@ -252,7 +255,7 @@ export function FundsDashboard({ initial, onLogout }) {
   const [notice, setNotice] = useState("");
   const [followStatus, setFollowStatus] = useState("Todos");
   const [alertCount, setAlertCount] = useState(6);
-  const [fundSort, setFundSort] = useState("balance");
+  const [fundSort, setFundSort] = useState("cdiYear");
   const [comparisonPeriod, setComparisonPeriod] = useState(2);
   const [scrollTarget, setScrollTarget] = useState(null);
   const inputRef = useRef(null);
@@ -313,7 +316,7 @@ export function FundsDashboard({ initial, onLogout }) {
       textMatch(`${f.name} ${f.manager} ${f.strategy}`, query),
   ).sort((a, b) => {
     if (fundSort === "name") return a.name.localeCompare(b.name, "pt-BR");
-    const value = (fund) => fundSort === "return12"
+    const value = (fund) => fundSort === "cdiYear" ? (cdiComparison(data, fund.id, 1)?.excess ?? -Infinity) : fundSort === "return12"
       ? (Number.isFinite(fund.returns[2]) ? fund.returns[2] : -Infinity)
       : sum(positions.filter((position) => position.fundId === fund.id));
     return value(b) - value(a) || a.name.localeCompare(b.name, "pt-BR");
@@ -345,7 +348,9 @@ export function FundsDashboard({ initial, onLogout }) {
     setFundId(id);
     if (strategy !== "all" && funds.find((fund) => fund.id === id)?.strategy !== strategy) setStrategy("all");
     go(next);
-    setClientKey(accountKey);
+    setClientKey(null);
+    setClientQuery("");
+    setFocusedClientKey(accountKey);
   }
   function makeTask(seed = {}) {
     setTaskSeed(seed);
@@ -367,6 +372,8 @@ export function FundsDashboard({ initial, onLogout }) {
     setTasks(restored.tasks);
     setLimit(restored.limit);
     setClientKey(null);
+    setClientQuery("");
+    setFocusedClientKey(null);
     setFundId(restored.data.funds[0]?.id);
     setPending(null);
     setError("");
@@ -418,6 +425,9 @@ export function FundsDashboard({ initial, onLogout }) {
     (p) => p.fundId === selectedFund?.id && (!activeClient || `${p.advisor}:${p.clientId}` === activeClient.key),
   );
   const fundClients = groupClients(currentFundPositions);
+  const fullFundPositions = positions.filter((p) => p.fundId === selectedFund?.id);
+  const shownFundClients = fundClients.filter((c) => textMatch(`${c.name} ${c.id}`, clientQuery));
+  const shownFundPositions = currentFundPositions.filter((p) => shownFundClients.some((c) => c.key === `${p.advisor}:${p.clientId}`));
   function exportPositions(list = positions) {
     download(
       `fundos_${data.date}.csv`,
@@ -491,84 +501,6 @@ export function FundsDashboard({ initial, onLogout }) {
     setModal(null);
     setNotice("Decisão registrada no histórico do acompanhamento.");
   }
-  const fundTable = (
-    <div className="fd-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Fundo / estratégia</th>
-            <th>Saldo</th>
-            <th>Peso no filtro</th>
-            <th>Mês</th>
-            <th>Ano</th>
-            <th>12 meses</th>
-            <th>24M (a.a.)</th>
-            <th>Referência · 12M</th>
-            <th>% da referência · 12M</th>
-            <th>Diferença · 12M (p.p.)</th>
-            <th>Revisões</th>
-            <th>
-              <span className="sr-only">Abrir fundo</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleFunds.map((f) => {
-            const balance = sum(positions.filter((p) => p.fundId === f.id)),
-              count = allAlerts.filter((a) => a.fundId === f.id).length;
-            const reference = fundReference(data, f.id), comparison = benchmarkComparison(data, f.id);
-            return (
-              <tr key={f.id}>
-                <td>
-                  <button
-                    className="fd-table-link"
-                    onClick={() => openFund(f.id)}
-                  >
-                    {f.name}
-                  </button>
-                  <small>
-                    {f.strategy} · {f.manager}
-                  </small>
-                  <small>{f.date ? `Cota: ${dateLabel(f.date)}` : "Sem retorno confirmado"}{f.sourceUrl && <> · <a href={f.sourceUrl} target="_blank" rel="noreferrer">Fonte dos retornos</a></>}</small>
-                </td>
-                <td className="fd-nowrap">{money(balance)}</td>
-                <td>{percent(total ? balance / total : 0)}</td>
-                {[0, 1, 2, 3].map((i) => (
-                  <td key={i} className={f.returns[i] < 0 ? "negative" : ""}>
-                    {percent(f.returns[i])}
-                  </td>
-                ))}
-                <td>{reference ? <><a href={reference.sourceUrl} target="_blank" rel="noreferrer">{reference.benchmark.name}</a><small>{percent(reference.benchmark.returns[2])}</small></> : "Não confirmada"}</td>
-                <td>{percent(comparison?.ratio)}<small>{comparison?.ratio != null ? `% de ${comparison.benchmark.name}; razão dos retornos` : "Sem dados comparáveis"}</small></td>
-                <td>{percentagePoints(comparison?.excess)}</td>
-                <td>
-                  <Badge tone={count ? "amber" : "neutral"}>
-                    {count
-                      ? `${count} pendente${count > 1 ? "s" : ""}`
-                      : "Sem alerta"}
-                  </Badge>
-                </td>
-                <td>
-                  <button
-                    className="fd-icon-button"
-                    aria-label={`Abrir ${f.name}`}
-                    onClick={() => openFund(f.id)}
-                  >
-                    <ArrowUpRight size={17} />
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {!visibleFunds.length && (
-        <Empty title="Nenhum fundo encontrado">
-          Altere a busca ou os filtros.
-        </Empty>
-      )}
-    </div>
-  );
 
   return (
     <div className="funds-app fd-reference">
@@ -749,12 +681,13 @@ export function FundsDashboard({ initial, onLogout }) {
             <Performance data={data} positions={positions} />
             <ComparisonGuide data={data} />
             <Underperformance data={data} positions={positions} alerts={allAlerts} query={query}
-              onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)}
-              onClient={(key) => { go("clients"); setClientKey(key); }} />
+              onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)} />
           </>}
 
           {page === "attention" && (
             <>
+              <Underperformance attention data={data} positions={positions} alerts={allAlerts} query={query}
+                onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)} />
               <div className="fd-stats">
                 <Stat
                   label="Patrimônio em fundos"
@@ -988,21 +921,32 @@ export function FundsDashboard({ initial, onLogout }) {
                 {attentionClients.length > 0 ? <div className="fd-table-wrap"><table>
                   <thead><tr><th>Cliente / conta</th><th>Saldo em revisão</th><th>Total em fundos da conta</th><th>% dos fundos da conta</th><th>Fundos para revisar</th></tr></thead>
                   <tbody>{attentionClients.slice(0, 25).map((client) => <tr key={client.key}>
-                    <td><button className="fd-table-link" onClick={() => { go("clients"); setClientKey(client.key); }}>{client.name}</button><small>{client.id} · {client.advisor}</small></td>
+                    <td><button className="fd-table-link" onClick={() => openFund(client.fundIds[0], "funds", client.key)}>{client.name}</button><small>{client.id} · {client.advisor}</small></td>
                     <td>{money(client.exposure)}</td><td>{money(client.accountBalance)}</td><td>{percent(client.weight)}</td>
                     <td>{client.fundIds.map((id) => <button key={id} className="fd-table-link fd-priority-fund" onClick={() => openFund(id, "funds", client.key)}>{funds.find((fund) => fund.id === id)?.name}</button>)}</td>
                   </tr>)}</tbody>
                 </table></div> : <Empty title="Sem revisões de prioridade alta nesta seleção">Alertas de prioridade média e concentrações continuam disponíveis na central.</Empty>}
                 <p className="fd-panel-note">Até 25 contas, ordenadas pelo saldo exposto a alertas de prioridade alta. Cada posição é contada uma vez. O percentual usa todos os fundos importados da conta, mesmo com filtro de estratégia. Esta lista orienta a revisão, sem determinar uma venda.</p>
               </Panel>
-              <Underperformance data={data} positions={positions} alerts={allAlerts} query={query}
-                onFund={(id, accountKey = null) => openFund(id, "funds", accountKey)}
-                onClient={(key) => { go("clients"); setClientKey(key); }} />
+
             </>
           )}
 
           {page === "portfolio" && (
             <>
+              <Panel
+                title="Rentabilidade dos Fundos"
+                eyebrow="CARTEIRA CONSOLIDADA"
+                action={<Field label="Ordenar fundos"><select value={fundSort} onChange={(event) => setFundSort(event.target.value)}>
+                  <option value="cdiYear">Retorno no ano × CDI</option><option value="balance">Maior saldo</option><option value="return12">Maior retorno em 12M</option><option value="name">Nome do fundo</option>
+                </select></Field>}
+              >
+                <FundPerformanceTable data={data} funds={visibleFunds} positions={positions} onFund={openFund} orderedByCdi={fundSort === "cdiYear"} />
+                <p className="fd-panel-note">
+                  Os pesos usam o saldo do filtro atual. Retornos dos fundos não
+                  representam o resultado efetivo dos clientes.
+                </p>
+              </Panel>
               <div className="fd-stats">
                 <Stat
                   label="Patrimônio selecionado"
@@ -1043,19 +987,7 @@ export function FundsDashboard({ initial, onLogout }) {
               </div>
               <Performance data={data} positions={positions} />
               <ComparisonGuide data={data} />
-              <Panel
-                title="Posições por fundo"
-                eyebrow="CARTEIRA CONSOLIDADA"
-                action={<Field label="Ordenar fundos"><select value={fundSort} onChange={(event) => setFundSort(event.target.value)}>
-                  <option value="balance">Maior saldo</option><option value="return12">Maior retorno em 12M</option><option value="name">Nome do fundo</option>
-                </select></Field>}
-              >
-                {fundTable}
-                <p className="fd-panel-note">
-                  Os pesos usam o saldo do filtro atual. Retornos dos fundos não
-                  representam o resultado efetivo dos clientes.
-                </p>
-              </Panel>
+
             </>
           )}
 
@@ -1260,148 +1192,46 @@ export function FundsDashboard({ initial, onLogout }) {
 
           {(page === "funds" || page === "compare") && (
             <>
-              <Panel
-                title={
-                  page === "compare"
-                    ? "Selecione o fundo atual"
-                    : "Consultar um fundo"
-                }
-                eyebrow={
-                  page === "compare"
-                    ? "SUGESTÕES DE REALOCAÇÃO"
-                    : "FUNDOS DA CARTEIRA"
-                }
-              >
-                <Field label="Conta na consulta" className="fd-account-select">
-                  <select value={activeClient?.key || "all"} onChange={(e) => {
-                    const key = e.target.value === "all" ? null : e.target.value;
-                    setClientKey(key);
-                    setQuery("");
-                  }}>
+              <Panel title="Consulta por Fundo de Investimento" eyebrow={`POSIÇÕES · ${dateLabel(data.date)}`}>
+                <div className="fd-consultation-chooser">
+                  <Field label="Fundo" className="fd-fund-select"><select value={selectedFund?.id || ""} onChange={(e) => { setFundId(e.target.value); setClientQuery(""); setFocusedClientKey(null); }}>
+                    {!consultationFunds.length && <option value="">Nenhum fundo nesta seleção</option>}
+                    {consultationFunds.map((f) => <option key={f.id} value={f.id}>{f.name} · {compact(sum(positions.filter((p) => p.fundId === f.id)))} · {groupClients(positions.filter((p) => p.fundId === f.id)).length} clientes</option>)}
+                  </select></Field>
+                  <Field label="Buscar cliente"><input placeholder="Código do cliente" value={clientQuery} onChange={(e) => setClientQuery(e.target.value)} /></Field>
+                </div>
+                <details className="fd-consultation-scope" open={activeClient ? true : undefined}><summary>Restringir consulta a uma conta{activeClient ? ` · ${activeClient.id}` : " (opcional)"}</summary>
+                  <Field label="Conta na consulta" className="fd-account-select"><select value={activeClient?.key || "all"} onChange={(e) => { setClientKey(e.target.value === "all" ? null : e.target.value); setQuery(""); setClientQuery(""); setFocusedClientKey(null); }}>
                     <option value="all">Todas as contas · visão do assessor</option>
                     {advisorClients.map((client) => <option key={client.key} value={client.key}>{client.name} · {client.id} · {client.advisor}</option>)}
-                  </select>
-                </Field>
-                <Field label="Fundo" className="fd-fund-select">
-                  <select
-                    value={selectedFund?.id || ""}
-                    onChange={(e) => setFundId(e.target.value)}
-                  >
-                    {!consultationFunds.length && <option value="">Nenhum fundo nesta seleção</option>}
-                    {consultationFunds.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name} · {f.strategy}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <p className="fd-caption">{activeClient ? `Somente fundos presentes na conta ${activeClient.id}. Pesos calculados sobre todos os fundos importados desta conta.` : "Escolha uma conta para consultar apenas os fundos em que ela está posicionada."}</p>
+                  </select></Field>
+                </details>
               </Panel>
-              {selectedFund ? (
+              {selectedFund ? (<>
+                <div className="fd-consultation-title"><h3>{selectedFund.name}</h3><Badge tone={allAlerts.some((a) => a.fundId === selectedFund.id) ? "amber" : "neutral"}>{allAlerts.some((a) => a.fundId === selectedFund.id) ? "Revisar" : "Sem alerta"}</Badge><span>{selectedFund.strategy} · {selectedFund.manager} · cota {dateLabel(selectedFund.date)}</span></div>
+                <div className="fd-stats fd-consultation-stats">
+                  <Stat label="NET no fundo" value={compact(sum(fullFundPositions))} note="Saldo na seleção do assessor" />
+                  <Stat label="Clientes" value={groupClients(fullFundPositions).length} note="Contas distintas" />
+                  <Stat label="Assessores" value={new Set(fullFundPositions.map((p) => p.advisor)).size} note="Na seleção atual" />
+                  <Stat label="Rent. 12M" value={percent(selectedFund.date === data.date ? selectedFund.returns[2] : null)} note="Retorno do fundo" />
+                  <Stat label="% CDI 12M" value={percent(cdiComparison(data, selectedFund.id)?.ratio)} note={fundReference(data, selectedFund.id)?.benchmark.id === "CDI" ? "Benchmark CDI" : "CDI de oportunidade"} />
+                  <Stat label="Quartil na classe" value="—" note="Universo de pares não validado" />
+                </div>
                 <div className="fd-fund-layout">
                   <div>
-                    <Panel
-                      title={selectedFund.name}
-                      eyebrow={selectedFund.strategy}
-                      action={
-                        <Badge>
-                          Posição importada
-                        </Badge>
-                      }
-                    >
-                      <div className="fd-fund-info">
-                        <div>
-                          <span>Gestora</span>
-                          <strong>{selectedFund.manager}</strong>
-                        </div>
-                        <div>
-                          <span>Saldo no filtro</span>
-                          <strong>{money(sum(currentFundPositions))}</strong>
-                        </div>
-                        <div>
-                          <span>Liquidez informada</span>
-                          <strong>{selectedFund.liquidity}</strong>
-                        </div>
-                      </div>
-                      <div className="fd-section-label">CLIENTES EXPOSTOS</div>
-                      <Button variant="secondary" icon={Download} onClick={() => download("clientes_do_fundo.csv", positionCsv(data, currentFundPositions))}>Exportar clientes deste fundo</Button>
-                      <div className="fd-table-wrap">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Cliente / conta</th>
-                              <th>Saldo no fundo</th>
-                              <th>% do saldo do fundo no filtro</th>
-                              <th>Total em fundos da conta</th>
-                              <th>% dos fundos da conta</th>
-                              <th />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {fundClients
-                              .filter((c) =>
-                                textMatch(
-                                  `${c.name} ${c.id} ${selectedFund.name}`,
-                                  query,
-                                ),
-                              )
-                              .map((c) => {
-                                return (
-                                  <tr key={c.key}>
-                                    <td>
-                                      <button
-                                        className="fd-table-link"
-                                        onClick={() => {
-                                          go("clients");
-                                          setClientKey(c.key);
-                                        }}
-                                      >
-                                        {c.name}
-                                      </button>
-                                      <small>
-                                        {c.id} · {c.advisor}
-                                      </small>
-                                    </td>
-                                    <td>{money(c.balance)}</td>
-                                    <td>{percent(sum(currentFundPositions) > 0 ? c.balance / sum(currentFundPositions) : null)}</td>
-                                    <td>{money(accountBalance(c.key))}</td>
-                                    <td>
-                                      {percent(
-                                        accountBalance(c.key)
-                                          ? c.balance / accountBalance(c.key)
-                                          : 0,
-                                      )}
-                                    </td>
-                                    <td>
-                                      <button
-                                        className="fd-icon-button"
-                                        aria-label={`Preparar reunião com ${c.name}`}
-                                        onClick={() =>
-                                          makeTask({
-                                            clientKey: c.key,
-                                            fundId: selectedFund.id,
-                                            title: `Revisar ${selectedFund.name}`,
-                                          })
-                                        }
-                                      >
-                                        <Plus size={17} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                          </tbody>
-                        </table>
-                      </div>
-                      {!fundClients.length && (
-                        <Empty title="Sem posições neste filtro">
-                          Selecione outro fundo ou amplie o filtro da carteira.
-                        </Empty>
-                      )}
-                      <p className="fd-panel-note">
-                        Prazos de resgate e disponibilidade devem ser
-                        confirmados antes de qualquer realocação.
-                      </p>
+                    <Panel className="fd-holder-panel" title="Clientes com este fundo" action={<Button icon={Download} onClick={() => download("clientes_do_fundo.csv", positionCsv(data, shownFundPositions))}>Exportar clientes deste fundo</Button>}>
+                      {focusedClientKey && <p className="fd-caption">Todas as contas da seleção posicionadas neste fundo. A conta de origem está destacada.</p>}
+                      <div className="fd-table-wrap"><table aria-label="Clientes com o fundo selecionado">
+                        <thead><tr><th>Cliente / conta</th><th>Assessor</th><th>NET no fundo</th><th>Peso no total do fundo</th><th>Total em fundos da conta</th><th>% dos fundos da conta</th><th><span className="sr-only">Preparar reunião</span></th></tr></thead>
+                        <tbody>{shownFundClients.map((c) => <tr key={c.key} className={c.key === focusedClientKey ? "fd-client-origin" : ""}>
+                          <td><button className="fd-table-link" onClick={() => { go("clients"); setClientKey(c.key); }}>{c.id}</button><small>{c.name}</small>{c.key === focusedClientKey && <small className="fd-origin-label">Conta de origem</small>}</td>
+                          <td>{c.advisor}</td><td>{money(c.balance)}</td><td>{percent(sum(fullFundPositions) ? c.balance / sum(fullFundPositions) : null)}</td><td>{money(accountBalance(c.key))}</td><td>{percent(accountBalance(c.key) ? c.balance / accountBalance(c.key) : null)}</td>
+                          <td><button className="fd-icon-button" aria-label={`Preparar reunião com ${c.name}`} onClick={() => makeTask({ clientKey: c.key, fundId: selectedFund.id, title: `Revisar ${selectedFund.name}` })}><Plus size={17} /></button></td>
+                        </tr>)}</tbody>
+                        <tfoot><tr><th scope="row">{shownFundClients.length} clientes</th><td /><td>{money(sum(shownFundPositions))}</td><td>{percent(sum(fullFundPositions) ? sum(shownFundPositions) / sum(fullFundPositions) : null)}</td><td colSpan={3}>Total das linhas exibidas</td></tr></tfoot>
+                      </table></div>
+                      {!shownFundClients.length && <Empty title="Sem posições neste filtro">Altere a busca por código ou amplie o filtro da carteira.</Empty>}
+                      <p className="fd-panel-note">Peso no total do fundo: participação da conta no saldo deste fundo na seleção do assessor. % dos fundos da conta: participação no total de fundos importados da conta, preservado ao filtrar. Liquidez: {selectedFund.liquidity}. Confirme os prazos e a disponibilidade antes de realocar.</p>
                     </Panel>
                     <Panel title="O que analisar antes da conversa" eyebrow={activeClient ? `CONTA ${activeClient.id}` : "REVISÃO DO FUNDO"}>
                       {(() => {
@@ -1416,7 +1246,7 @@ export function FundsDashboard({ initial, onLogout }) {
                     </Panel>
                   </div>
                   <Suggestions fund={selectedFund} data={data} comparisonPeriod={comparisonPeriod} setComparisonPeriod={setComparisonPeriod} activeClient={activeClient} fundClients={fundClients} makeTask={makeTask} onImport={() => suggestionsRef.current?.click()} />
-                </div>
+                </div></>
               ) : (
                 <Empty title="Nenhum fundo disponível">
                   Importe posições para começar.
@@ -1957,7 +1787,7 @@ function Stat({ label, value, icon: Icon, note, accent }) {
     <div className={`fd-stat ${accent ? "accent" : ""}`}>
       <div>
         <span>{label}</span>
-        <Icon size={18} />
+        {Icon && <Icon size={18} />}
       </div>
       <strong>{value}</strong>
       <p>{note}</p>

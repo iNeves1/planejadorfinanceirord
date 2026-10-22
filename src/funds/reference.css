@@ -190,3 +190,41 @@
   .fd-reference .fd-fund-layout { display: block; }
   .fd-reference .fd-panel-heading { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* Tabelas e consulta alinhadas ao modelo enviado pelo assessor. */
+.fd-reference .fd-performance-table { min-width: 1100px; }
+.fd-reference .fd-performance-table th, .fd-reference .fd-performance-table td { padding: 5px 7px; font-size: 11.5px; }
+.fd-reference .fd-performance-table td:first-child { min-width: 225px; }
+.fd-reference .fd-performance-table td:not(:first-child) { text-align: right; }
+.fd-reference .fd-performance-table td:nth-child(2) { text-align: left; }
+.fd-reference .fd-performance-table .fd-absolute-group { background: #188769; text-align: center; }
+.fd-reference .fd-performance-table .fd-cdi-group { background: #0e5d49; text-align: center; }
+.fd-reference tr.fd-cdi-row > * { background: #32daa2 !important; color: #134f3c; font-weight: 700; }
+.fd-reference td.fd-above-cdi { background: #ddf5ec !important; }
+.fd-reference td.fd-below-cdi { background: #f9ded9 !important; color: #80352e; }
+.fd-reference .fd-underperformance th, .fd-reference .fd-underperformance td { padding: 6px 8px; font-size: 12px; }
+.fd-reference .fd-consultation-chooser { display: grid; grid-template-columns: minmax(0, 2fr) minmax(140px, 1fr); align-items: end; gap: 14px; margin: 14px 16px; padding: 12px; background: #ddf5ec; border-left: 3px solid var(--fd-green); }
+.fd-reference .fd-consultation-chooser .fd-field { margin: 0; min-width: 0; }
+.fd-reference .fd-consultation-chooser .fd-field > span { color: #146754; }
+.fd-reference .fd-consultation-chooser select { font-size: 13px; }
+.fd-reference .fd-consultation-scope { margin: 0 16px 12px; font-size: 12px; color: #52675c; }
+.fd-reference .fd-consultation-scope summary { cursor: pointer; }
+.fd-reference .fd-consultation-scope .fd-account-select { margin: 8px 0; }
+.fd-reference .fd-consultation-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 10px; }
+.fd-reference .fd-consultation-title h3 { margin: 0; font-size: 18px; }
+.fd-reference .fd-consultation-title > span:last-child { color: var(--fd-muted); font-size: 12px; }
+.fd-reference .fd-consultation-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fd-reference .fd-consultation-stats .fd-stat > strong { font-size: 20px; }
+.fd-reference .fd-holder-panel .fd-panel-heading { background: #fff; padding: 0 0 8px; }
+.fd-reference .fd-holder-panel .fd-panel-heading h2 { color: #13745d; font-size: 14px; }
+.fd-reference .fd-holder-panel { box-shadow: none; }
+.fd-reference .fd-holder-panel th, .fd-reference .fd-holder-panel td { font-size: 11.5px; padding: 6px; }
+.fd-reference tfoot th, .fd-reference tfoot td { background: #f3f5f4; color: var(--fd-ink); font-weight: 700; }
+.fd-reference tr.fd-client-origin td { background: #ddf5ec !important; }
+.fd-reference tr.fd-client-origin td:first-child { box-shadow: inset 3px 0 var(--fd-green); }
+.fd-reference td .fd-origin-label { color: #13745d; font-weight: 700; }
+@media (max-width: 1100px) { .fd-reference .fd-consultation-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .fd-reference .fd-consultation-chooser { grid-template-columns: minmax(0, 1fr); margin: 12px; }
+  .fd-reference .fd-consultation-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

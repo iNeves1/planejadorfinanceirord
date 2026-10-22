@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { importWorkspace } from "../src/funds/workspace.js";
 import { compact, sum, percent, buildAlerts, underperformanceExposure } from "../src/funds/model.js";
-import { weightedPerformance } from "../src/funds/performance.js";
+import { weightedPerformance, cdiComparison } from "../src/funds/performance.js";
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 if (!process.argv[2]) throw new Error("Informe o caminho externo do HTML privado a validar.");
 const html = await readFile(process.argv[2], "utf8");
@@ -41,12 +41,29 @@ try {
   while (await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).count()) await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).click();
   assert.equal(await page.locator(".fd-alert").count(), data.reviews.filter((r) => r.type === "Desempenho").length);
   await page.getByRole("navigation").getByRole("button", { name: "Rentabilidade", exact: true }).click();
+  const fundTable = page.getByRole("table", { name: "Rentabilidade dos fundos e comparação com CDI", exact: true });
+  const rendered = await fundTable.locator("tbody tr").evaluateAll((rows) => rows.filter((row) => row.querySelector("button")).map((row) => ({
+    name: row.querySelector("button").textContent,
+    values: Array.from(row.cells).slice(5).map((cell) => ({ text: cell.textContent, tone: cell.className }))
+  })));
+  const heldFunds = data.funds.filter((fund) => data.positions.some((position) => position.fundId === fund.id));
+  assert.equal(rendered.length, heldFunds.length);
+  for (const fund of heldFunds) {
+    const row = rendered.find((item) => item.name === fund.name);
+    assert.ok(row, "Todo fundo da carteira deve estar na tabela");
+    for (let period = 0; period < 4; period++) {
+      assert.equal(row.values[period].text, percent(fund.date === data.date ? fund.returns[period] : null), "Retorno da tabela deve corresponder à fonte privada");
+      const comparison = cdiComparison(data, fund.id, period);
+      assert.equal(row.values[period + 4].text, percent(comparison?.ratio), "% CDI deve usar a mesma janela e data");
+      assert.equal(row.values[period + 4].tone, comparison?.ratio == null ? "" : comparison.excess >= 0 ? "fd-above-cdi" : "fd-below-cdi", "Cores devem seguir a comparação calculada");
+    }
+  }
   const metric = weightedPerformance(data, data.positions);
   const performance = await page.locator(".fd-performance-summary").innerText();
   assert.ok(performance.includes(percent(metric.value)));
   assert.ok(performance.includes(percent(metric.coverage)));
   if (data.market) {
-    const captions = await page.getByRole("table").nth(1).innerText();
+    const captions = await page.getByRole("table", { name: "Comparação de 12 meses restrita aos fundos com a mesma referência identificada", exact: true }).innerText();
     for (const benchmark of data.market.benchmarks.filter((index) => data.market.fundReferences.some((reference) => reference.benchmarkId === index.id)))
       assert.ok(captions.includes(benchmark.name));
   }
