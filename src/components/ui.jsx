@@ -377,8 +377,8 @@ export function FundField({ label, children, className = '' }) {
   }
   return <label className={`fd-field ${className}`}><span id={labelId}>{label}</span>{Children.map(children, nameControl)}</label>;
 }
-export function FundPanel({ title, eyebrow, action, children, className = '', id }) {
-  return <section id={id} className={`fd-panel ${className}`}><div className="fd-panel-heading"><div>{eyebrow && <span className="fd-eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>{action}</div>{children}</section>;
+export function FundPanel({ title, eyebrow, action, children, className = '', id, tabIndex }) {
+  return <section id={id} tabIndex={tabIndex} className={`fd-panel ${className}`}><div className="fd-panel-heading"><div>{eyebrow && <span className="fd-eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>{action}</div>{children}</section>;
 }
 export function FundBadge({ children, tone = 'neutral' }) {
   return <span className={`fd-badge ${tone}`}>{children}</span>;

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { importWorkspace, exportWorkspace } from "../src/funds/workspace.js";
 import { weightedPerformance, benchmarkComparison, fundReference, relocationAlternatives } from "../src/funds/performance.js";
-import { priorityClients } from "../src/funds/model.js";
+import { priorityClients, buildAlerts, underperformanceExposure } from "../src/funds/model.js";
 import { fixture, marketFixture } from "./fixtures/workspace.js";
 
 test("indicador usa somente saldo com retorno e revela cobertura parcial por período", () => {
@@ -113,4 +113,21 @@ test("realocação usa curadoria por origem e exige ganho na mesma janela e data
   assert.equal(relocationAlternatives(data, "F1").length, 1);
   data.funds[0].returns[2] = null;
   assert.deepEqual(relocationAlternatives(data, "F1"), [], "retorno atual ausente impede comparação");
+});
+
+test("exposição a baixo desempenho lista todos os posicionados sem inventar alertas de conta", () => {
+  const { data } = importWorkspace(JSON.stringify(marketFixture()));
+  data.positions.push({ ...data.positions[0], fundId: "F3", balance: 3000 });
+  const selected = data.positions.filter((p) => p.fundId === "F1");
+  const alerts = buildAlerts(data, selected);
+  const exposure = underperformanceExposure(data, selected, [...alerts, ...alerts]);
+  assert.equal(exposure.funds.length, 1);
+  assert.equal(exposure.funds[0].balance, 3001, "alertas repetidos não duplicam posições");
+  assert.equal(exposure.clients.length, 2, "inclui todas as contas posicionadas no fundo sinalizado");
+  assert.equal(exposure.clients[0].id, "A2", "ordena por saldo exposto");
+  assert.equal(exposure.clients.find((client) => client.id === "A1").accountBalance, 4000.56);
+  assert.equal(exposure.clients.find((client) => client.id === "A1").weight, 1000.56 / 4000.56);
+  assert.equal(alerts.filter((alert) => alert.type === "Desempenho").length, 1, "preserva o alerta individual original");
+  assert.equal(underperformanceExposure(data, data.positions.filter((p) => p.fundId === "F3"), alerts).clients.length, 0);
+  assert.equal(underperformanceExposure(data, selected, alerts.filter((alert) => alert.type !== "Desempenho")).funds.length, 0, "concentração não é baixo desempenho");
 });
