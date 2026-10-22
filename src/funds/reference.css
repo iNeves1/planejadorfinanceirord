@@ -34,6 +34,8 @@
 .fd-reference .fd-reference-nav .fd-button + .fd-button { margin-left: 0; }
 .fd-reference .fd-main { width: 100%; margin: 0; min-width: 0; }
 .fd-reference .fd-content { width: 100%; max-width: 1280px; margin: auto; padding: 20px 16px; }
+.fd-reference .fd-audit-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 10px 14px; background: #ddf5ec; color: #0f5e49; font-size: 12px; }
+.fd-reference .fd-audit-summary button { margin-left: auto; border: 0; background: transparent; color: #0f5e49; text-decoration: underline; font-weight: 700; }
 .fd-reference #conteudo, .fd-reference #baixo-desempenho { scroll-margin-top: 100px; }
 .fd-reference .fd-underperformance-holding + .fd-underperformance-holding { margin-top: 10px; }
 .fd-reference .fd-underperformance-holding button { white-space: normal; }

@@ -25,3 +25,17 @@ export function marketFixture() {
   };
   return bundle;
 }
+
+export function auditFixture() {
+  const bundle = marketFixture();
+  bundle.version = 3;
+  bundle.audit = { checkedAt: "2026-10-22", reference: bundle.date };
+  bundle.positionPerformance = [{ account: "A1", advisor: "IN", fundId: "F1", date: bundle.date,
+    month: .003, year: .03, months24: null, monthCdi: 1.01, yearCdi: 1.02, months24Cdi: null, source: "XP · fixture anônima" }];
+  bundle.market.benchmarks.push({ id: "CDI-MR", name: "CDI · Mais Retorno", returns: [.0101, .1001, .1501, null], date: bundle.date,
+    sourceUrl: "https://data.maisretorno.com/mr-data/v4/general/quotes/cdi:idx" });
+  bundle.positionsCsv += "\nA1;Conta de teste 1;IN;F4;Fundo sob investigação;Multimercado;Gestora fictícia;700,00;2026-09-30;;1;3;6;6;2026-09-30;https://maisretorno.com/fundo/exemplo-investigacao";
+  bundle.reviews.push({ account: "A1", fundId: "F4", type: "Desempenho a investigar", severity: "medium",
+    title: "Confirmar benchmark da fixture", reason: "CDI é apenas oportunidade nesta comparação de teste.", next: "Conferir mandato e referência.", source: "Teste automatizado", date: bundle.date });
+  return bundle;
+}

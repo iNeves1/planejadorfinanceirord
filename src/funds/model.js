@@ -111,8 +111,9 @@ export function priorityClients(data, positions, alerts) {
   }).filter((client) => client.exposure > 0).sort((a, b) => b.exposure - a.exposure || a.key.localeCompare(b.key));
 }
 // Exposição ao fundo sinalizado, sem atribuir a todas as contas o alerta individual.
+export const isPerformanceReview = (alert) => ["Desempenho", "Desempenho a investigar"].includes(alert.type);
 export function underperformanceExposure(data, positions, alerts) {
-  const fundIds = new Set(alerts.filter((alert) => alert.type === "Desempenho").map((alert) => alert.fundId));
+  const fundIds = new Set(alerts.filter(isPerformanceReview).map((alert) => alert.fundId));
   const affected = positions.filter((position) => fundIds.has(position.fundId));
   const clients = groupClients(affected).map((client) => {
     const accountBalance = sum(data.positions.filter((p) => `${p.advisor}:${p.clientId}` === client.key));

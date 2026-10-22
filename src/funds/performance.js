@@ -10,7 +10,7 @@ function sourceIsValid(value) {
   try {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password &&
-      ["api.bcb.gov.br", "www.bcb.gov.br", "dados.cvm.gov.br", "maisretorno.com",
+      ["api.bcb.gov.br", "www.bcb.gov.br", "dados.cvm.gov.br", "maisretorno.com", "data.maisretorno.com",
         "www.maisretorno.com", "www.xpasset.com.br", "xpasset-files.s3.amazonaws.com", "www.anbima.com.br"].includes(url.hostname);
   } catch { return false; }
 }
@@ -53,6 +53,20 @@ export function benchmarkComparison(data, fundId, period = 2) {
   return { ...reference, fundReturn, benchmarkReturn, excess: fundReturn - benchmarkReturn,
     ratio: benchmarkReturn > 0 ? fundReturn / benchmarkReturn : null };
 }
+
+// Comparação de oportunidade com CDI, sem atribuí-lo ao mandato do fundo.
+export function cdiComparison(data, fundId, period = 2) {
+  const benchmark = data.market?.benchmarks.find((item) => item.id === "CDI");
+  const fund = data.funds.find((item) => item.id === fundId);
+  if (data.market?.date !== data.date || benchmark?.date !== data.date || fund?.date !== data.date ||
+      !Number.isFinite(fund.returns?.[period]) || !Number.isFinite(benchmark.returns[period])) return null;
+  return { benchmark, fundReturn: fund.returns[period], benchmarkReturn: benchmark.returns[period],
+    excess: fund.returns[period] - benchmark.returns[period],
+    ratio: benchmark.returns[period] > 0 ? fund.returns[period] / benchmark.returns[period] : null };
+}
+
+export const percentagePoints = (value) => value == null || !Number.isFinite(value) ? "—" :
+  `${(value * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} p.p.`;
 
 // A lista de origem vem da curadoria por par de fundos, nunca de um ranking global.
 // Rentabilidade superior é um filtro adicional; não comprova adequação ao cliente.
