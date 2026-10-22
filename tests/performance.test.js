@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { importWorkspace, exportWorkspace } from "../src/funds/workspace.js";
-import { weightedPerformance, benchmarkComparison, fundReference } from "../src/funds/performance.js";
+import { weightedPerformance, benchmarkComparison, fundReference, relocationAlternatives } from "../src/funds/performance.js";
 import { priorityClients } from "../src/funds/model.js";
 import { fixture, marketFixture } from "./fixtures/workspace.js";
 
@@ -87,4 +87,30 @@ test("prioridades por conta não duplicam exposição e preservam denominador co
   assert.equal(ranked[0].accountBalance, 4000.56);
   assert.equal(ranked[0].weight, 1000.56 / 4000.56);
   assert.deepEqual(ranked[0].fundIds, ["F1"]);
+});
+
+test("realocação usa curadoria por origem e exige ganho na mesma janela e data", () => {
+  const { data } = importWorkspace(JSON.stringify(marketFixture()));
+  const candidate = data.suggestions.F1[0];
+  assert.equal(relocationAlternatives(data, "F1")[0].id, "F2");
+  assert.ok(Math.abs(relocationAlternatives(data, "F1")[0].difference - .02) < 1e-12);
+  assert.deepEqual(relocationAlternatives(data, "F1", 0), [], "empate não vira sugestão");
+  assert.deepEqual(relocationAlternatives(data, "F1", 3), [], "histórico ausente não vira zero");
+  assert.deepEqual(relocationAlternatives(data, "F3"), [], "lista não se repete para todas as origens");
+  candidate.returns[2] = .1;
+  assert.deepEqual(relocationAlternatives(data, "F1"), [], "alternativa inferior é excluída");
+  candidate.returns[2] = .14; candidate.date = "2026-10-01";
+  assert.deepEqual(relocationAlternatives(data, "F1"), [], "referência diferente é excluída");
+  candidate.date = data.date;
+  data.funds.push({ ...candidate, strategy: "Inflação" });
+  assert.deepEqual(relocationAlternatives(data, "F1"), [], "estratégia conhecida incompatível é excluída");
+  data.funds.at(-1).strategy = data.funds[0].strategy;
+  assert.equal(relocationAlternatives(data, "F1").length, 1);
+  data.market.benchmarks.push({ ...data.market.benchmarks[0], id: "OUTRO", name: "Outra referência" });
+  data.market.fundReferences.push({ fundId: "F2", benchmarkId: "OUTRO", sourceUrl: candidate.sourceUrl });
+  assert.deepEqual(relocationAlternatives(data, "F1"), [], "benchmarks conhecidos incompatíveis são excluídos");
+  data.market.fundReferences.at(-1).benchmarkId = "CDI";
+  assert.equal(relocationAlternatives(data, "F1").length, 1);
+  data.funds[0].returns[2] = null;
+  assert.deepEqual(relocationAlternatives(data, "F1"), [], "retorno atual ausente impede comparação");
 });

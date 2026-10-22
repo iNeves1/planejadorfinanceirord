@@ -24,10 +24,11 @@ try {
   await page.getByText("Carteira privada · arquivo de trabalho", { exact: true }).waitFor();
   assert.equal(await page.locator(".fd-stat").nth(0).locator("strong").innerText(), compact(sum(data.positions)));
   assert.equal(await page.locator(".fd-stat").nth(1).locator("strong").innerText(), String(new Set(data.positions.map((p) => p.account)).size));
+  await page.getByRole("navigation").getByRole("button", { name: "Pontos de atenção", exact: true }).click();
   await page.getByRole("button", { name: "Desempenho", exact: true }).click();
   while (await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).count()) await page.getByRole("button", { name: "Mostrar mais prioridades", exact: true }).click();
   assert.equal(await page.locator(".fd-alert").count(), data.reviews.filter((r) => r.type === "Desempenho").length);
-  await page.getByRole("navigation").getByRole("button", { name: "Carteira de fundos", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Rentabilidade", exact: true }).click();
   const metric = weightedPerformance(data, data.positions);
   const performance = await page.locator(".fd-performance-summary").innerText();
   assert.ok(performance.includes(percent(metric.value)));
@@ -37,7 +38,7 @@ try {
     for (const benchmark of data.market.benchmarks.filter((index) => data.market.fundReferences.some((reference) => reference.benchmarkId === index.id)))
       assert.ok(captions.includes(benchmark.name));
   }
-  await page.getByRole("navigation").getByRole("button", { name: "Comparador", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Realocação", exact: true }).click();
   for (const [id, alternatives] of Object.entries(data.suggestions)) {
     await page.getByLabel("Fundo", { exact: true }).selectOption(id);
     await page.getByRole("heading", { name: alternatives[0].name, exact: true }).waitFor();

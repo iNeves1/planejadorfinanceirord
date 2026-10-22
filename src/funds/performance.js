@@ -54,6 +54,24 @@ export function benchmarkComparison(data, fundId, period = 2) {
     ratio: benchmarkReturn > 0 ? fundReturn / benchmarkReturn : null };
 }
 
+// A lista de origem vem da curadoria por par de fundos, nunca de um ranking global.
+// Rentabilidade superior é um filtro adicional; não comprova adequação ao cliente.
+export function relocationAlternatives(data, fundId, period = 2) {
+  const current = data.funds.find((fund) => fund.id === fundId);
+  if (![0, 1, 2, 3].includes(period) || current?.date !== data.date ||
+      !Number.isFinite(current.returns?.[period])) return [];
+  return (data.suggestions?.[fundId] || []).filter((candidate) => {
+    const known = data.funds.find((fund) => fund.id === candidate.id);
+    const currentReference = fundReference(data, fundId), candidateReference = fundReference(data, candidate.id);
+    return candidate.id !== fundId && candidate.date === current.date &&
+      (!known || known.strategy === current.strategy) &&
+      (!currentReference || !candidateReference || currentReference.benchmark.id === candidateReference.benchmark.id) &&
+      Number.isFinite(candidate.returns?.[period]) &&
+      candidate.returns[period] - current.returns[period] > 1e-10;
+  }).map((candidate) => ({ ...candidate, difference: candidate.returns[period] - current.returns[period] }))
+    .sort((a, b) => b.difference - a.difference || a.name.localeCompare(b.name, "pt-BR"));
+}
+
 export function weightedPerformance(data, positions, period = 2, benchmarkId = null) {
   const funds = new Map(data.funds.map((fund) => [fund.id, fund]));
   let totalBalance = 0, coveredBalance = 0, weighted = 0;
